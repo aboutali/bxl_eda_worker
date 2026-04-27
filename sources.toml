@@ -1,67 +1,235 @@
 # Source list for bxl_eda_worker.
-# Edit URLs freely — they are not validated until fetch time.
-# `type` is one of: "rss", "eeas_html".
-# Verified state as of 2026-04.
+# Verified state as of 2026-04. Edit URLs freely — no validation until fetch time.
+#
+# fields:
+#   id              short stable identifier
+#   name            display name in digest
+#   type            "rss" | "eeas_html" | "headless_html"
+#   url             fetch URL
+#   category        "eu_institution" | "swiss_official" | "press_eu"
+#                   | "press_swiss" | "press_intl" | "think_tank"
+#   weight          1=low, 3=high; primary sources rank above secondary in digest
+#   language        "en" | "de" | "fr" | "it"
+#   selector        CSS selector for headless_html (anchor selector)
+#   title_selector  optional CSS selector evaluated *inside* each anchor to get a clean title
+#   badge           optional short tag shown next to source name
+
+# ─────────────────────────────────────────────────────────────────────────────
+# EU INSTITUTIONS — primary sources
+# ─────────────────────────────────────────────────────────────────────────────
 
 [[sources]]
 id = "eeas_press"
-name = "EEAS Press Material"
+name = "EEAS — Press Material"
 type = "eeas_html"
 url = "https://www.eeas.europa.eu/eeas/press-material_en"
+category = "eu_institution"
 weight = 3
-# EEAS retired its public RSS; we scrape the press-material listing page.
-# Per-item dates are not exposed in the listing, so first-seen wins.
+language = "en"
 
 [[sources]]
-id = "ep_news"
-name = "European Parliament — News"
-type = "rss"
-url = "https://www.europarl.europa.eu/rss/doc/top-stories/en.xml"
-weight = 2
+id = "council_press"
+name = "Council of the EU — Press Releases"
+type = "headless_html"
+url = "https://www.consilium.europa.eu/en/press/press-releases/"
+category = "eu_institution"
+weight = 3
+language = "en"
+selector = "a.gsc-excerpt-item__link"
+title_selector = ".gsc-excerpt-item__title"
+badge = "FAC"
 
-[[sources]]
-id = "ep_afet"
-name = "European Parliament — AFET Committee"
-type = "rss"
-url = "https://www.europarl.europa.eu/rss/committee/afet/en.xml"
-weight = 2
-
-[[sources]]
-id = "politico_eu"
-name = "Politico Europe"
-type = "rss"
-url = "https://www.politico.eu/feed/"
-weight = 2
+# council_meetings (FAC calendar) is disabled: the page renders items via
+# deferred XHRs that don't settle within our 30s timeout. Press releases above
+# already carry FAC outcomes; the calendar is "when's the next FAC", which is
+# secondary signal. Re-enable once a faster selector path is found.
+#
+# [[sources]]
+# id = "council_meetings"
+# name = "Council of the EU — Meetings (incl. FAC calendar)"
+# type = "headless_html"
+# url = "https://www.consilium.europa.eu/en/meetings/calendar/"
+# category = "eu_institution"
+# weight = 3
+# language = "en"
+# selector = "a.gsc-excerpt-item__link"
+# title_selector = ".gsc-excerpt-item__title"
+# badge = "FAC"
 
 [[sources]]
 id = "commission_press"
 name = "European Commission — Press Corner"
 type = "rss"
 url = "https://ec.europa.eu/commission/presscorner/api/rss?language=en"
+category = "eu_institution"
 weight = 2
+language = "en"
+
+[[sources]]
+id = "ep_news"
+name = "European Parliament — News"
+type = "rss"
+url = "https://www.europarl.europa.eu/rss/doc/top-stories/en.xml"
+category = "eu_institution"
+weight = 2
+language = "en"
+
+[[sources]]
+id = "ep_afet"
+name = "EP/AFET — Foreign Affairs Committee"
+type = "rss"
+url = "https://www.europarl.europa.eu/rss/committee/afet/en.xml"
+category = "eu_institution"
+weight = 3
+language = "en"
+
+[[sources]]
+id = "ep_sede"
+name = "EP/SEDE — Security & Defence Subcommittee"
+type = "rss"
+url = "https://www.europarl.europa.eu/rss/committee/sede/en.xml"
+category = "eu_institution"
+weight = 3
+language = "en"
+
+[[sources]]
+id = "ep_droi"
+name = "EP/DROI — Human Rights Subcommittee"
+type = "rss"
+url = "https://www.europarl.europa.eu/rss/committee/droi/en.xml"
+category = "eu_institution"
+weight = 2
+language = "en"
+
+[[sources]]
+id = "ep_inta"
+name = "EP/INTA — International Trade Committee"
+type = "rss"
+url = "https://www.europarl.europa.eu/rss/committee/inta/en.xml"
+category = "eu_institution"
+weight = 2
+language = "en"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# DISABLED: Council of the EU
-# Both consilium.europa.eu RSS endpoints (press releases + meetings calendar)
-# are now bot-protected (HTTP 403 with a "Browser check" interstitial). Plain
-# httpx + browser User-Agent is not enough to get past it. Options to revive:
-#   1. Run via a headless browser (Playwright) — heavyweight for a daily job.
-#   2. Find a third-party mirror or use newsroom.consilium.europa.eu (no RSS
-#      there either, would need scraping).
-#   3. Rely on Commission press corner + Politico, which both report FAC
-#      conclusions when they land.
-# Leaving the entries here as a reminder, commented out:
+# PRESS — Brussels-focused EU press
+# ─────────────────────────────────────────────────────────────────────────────
+
+[[sources]]
+id = "politico_eu"
+name = "Politico Europe"
+type = "rss"
+url = "https://www.politico.eu/feed/"
+category = "press_eu"
+weight = 2
+language = "en"
+
+[[sources]]
+id = "euobserver"
+name = "EUobserver"
+type = "rss"
+url = "https://euobserver.com/rss"
+category = "press_eu"
+weight = 2
+language = "en"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PRESS — Swiss
+# These catch SECO / Bundesrat / EDA coverage from a different angle than
+# the official sites themselves; in practice they often beat the official
+# pages to publication.
+# ─────────────────────────────────────────────────────────────────────────────
+
+[[sources]]
+id = "nzz_intl"
+name = "NZZ — International"
+type = "rss"
+url = "https://www.nzz.ch/international.rss"
+category = "press_swiss"
+weight = 2
+language = "de"
+
+[[sources]]
+id = "tagi"
+name = "Tages-Anzeiger"
+type = "rss"
+url = "https://www.tagesanzeiger.ch/rss.html"
+category = "press_swiss"
+weight = 2
+language = "de"
+
+[[sources]]
+id = "srf_intl"
+name = "SRF — International"
+type = "rss"
+url = "https://www.srf.ch/news/bnf/rss/1922"
+category = "press_swiss"
+weight = 2
+language = "de"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PRESS — international
+# ─────────────────────────────────────────────────────────────────────────────
+
+[[sources]]
+id = "lmd_recents"
+name = "Le Monde Diplomatique"
+type = "rss"
+url = "https://www.monde-diplomatique.fr/recents.xml"
+category = "press_intl"
+weight = 1
+language = "fr"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# THINK TANKS
+# ─────────────────────────────────────────────────────────────────────────────
+
+[[sources]]
+id = "ecfr"
+name = "ECFR — European Council on Foreign Relations"
+type = "rss"
+url = "https://ecfr.eu/feed/"
+category = "think_tank"
+weight = 1
+language = "en"
+
+[[sources]]
+id = "bruegel"
+name = "Bruegel"
+type = "rss"
+url = "https://www.bruegel.org/rss.xml"
+category = "think_tank"
+weight = 1
+language = "en"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DISABLED — Swiss official sites (admin.ch / SECO / EDA)
+# ─────────────────────────────────────────────────────────────────────────────
+# Federal admin sites use a JS-hydrated CMS where the press release listing
+# anchors do not appear in the rendered DOM even after networkidle + scroll.
+# The release titles probably load via a deferred API call that fires only on
+# user interaction. Selector reverse-engineering is needed; tracking as a
+# follow-up. Meanwhile NZZ / Tagi / SRF cover the same announcements.
+#
+# When you have working selectors, uncomment and add them here. Pattern:
 #
 # [[sources]]
-# id = "council_press"
-# name = "Council of the EU — Press Releases"
-# type = "rss"
-# url = "https://www.consilium.europa.eu/en/press/press-releases/?rss=1"
+# id = "seco_news"
+# name = "SECO — Press Releases"
+# type = "headless_html"
+# url = "https://www.seco.admin.ch/seco/de/home/seco/nsb-news/medienmitteilungen-2026.html"
+# category = "swiss_official"
 # weight = 3
+# language = "de"
+# selector = "<TBD>"
+# title_selector = "<TBD>"
+# badge = "🇨🇭 SECO"
 #
 # [[sources]]
-# id = "council_meetings"
-# name = "Council of the EU — Meetings (incl. FAC)"
-# type = "rss"
-# url = "https://www.consilium.europa.eu/en/meetings/calendar/?rss=1"
-# weight = 3
+# id = "eda_news"
+# name = "EDA/FDFA — News & Media Releases"
+# ...
+#
+# [[sources]]
+# id = "admin_press"
+# name = "Federal Council — Press Releases"
+# ...

@@ -16,10 +16,19 @@ def main() -> None:
         default=24,
         help="Digest window size in hours (default: 24).",
     )
+    run_p.add_argument(
+        "--skip-headless",
+        action="store_true",
+        help="Skip Playwright sources (Council, Swiss admin). Useful when "
+             "Chromium isn't installed or you want a fast dry run.",
+    )
 
     args = parser.parse_args()
     if args.cmd in (None, "run"):
-        run(window_hours=getattr(args, "window_hours", 24))
+        run(
+            window_hours=getattr(args, "window_hours", 24),
+            skip_headless=getattr(args, "skip_headless", False),
+        )
     else:
         parser.error(f"unknown command: {args.cmd}")
 

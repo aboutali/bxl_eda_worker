@@ -16,6 +16,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+headless = ["playwright>=1.45"]
 
 [project.scripts]
 bxl-eda-worker = "bxl_eda_worker.__main__:main"

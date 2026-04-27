@@ -7,21 +7,27 @@ from pathlib import Path
 
 from bxl_eda_worker.models import Item
 
-SCHEMA = """
+TABLE_SCHEMA = """
 CREATE TABLE IF NOT EXISTS items (
-  id            INTEGER PRIMARY KEY,
-  url           TEXT UNIQUE NOT NULL,
-  source        TEXT NOT NULL,
-  title         TEXT NOT NULL,
-  summary       TEXT NOT NULL DEFAULT '',
-  published_at  TEXT,
-  fetched_at    TEXT NOT NULL,
-  topics        TEXT NOT NULL DEFAULT '[]',
-  regions       TEXT NOT NULL DEFAULT '[]',
+  id              INTEGER PRIMARY KEY,
+  url             TEXT UNIQUE NOT NULL,
+  source          TEXT NOT NULL,
+  category        TEXT NOT NULL DEFAULT 'eu_institution',
+  title           TEXT NOT NULL,
+  summary         TEXT NOT NULL DEFAULT '',
+  language        TEXT NOT NULL DEFAULT 'en',
+  published_at    TEXT,
+  fetched_at      TEXT NOT NULL,
+  topics          TEXT NOT NULL DEFAULT '[]',
+  regions         TEXT NOT NULL DEFAULT '[]',
   swiss_relevance INTEGER NOT NULL DEFAULT 0
 );
+"""
+
+INDEX_SCHEMA = """
 CREATE INDEX IF NOT EXISTS idx_items_published ON items(published_at);
 CREATE INDEX IF NOT EXISTS idx_items_source    ON items(source);
+CREATE INDEX IF NOT EXISTS idx_items_category  ON items(category);
 """
 
 
@@ -29,20 +35,34 @@ def connect(db_path: Path) -> sqlite3.Connection:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
-    conn.executescript(SCHEMA)
+    conn.executescript(TABLE_SCHEMA)
+    _migrate(conn)  # add columns to legacy DBs before indexing them
+    conn.executescript(INDEX_SCHEMA)
     return conn
 
 
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Add columns added after first release. Idempotent."""
+    cur = conn.execute("PRAGMA table_info(items)")
+    cols = {row["name"] for row in cur.fetchall()}
+    if "category" not in cols:
+        conn.execute("ALTER TABLE items ADD COLUMN category TEXT NOT NULL DEFAULT 'eu_institution'")
+    if "language" not in cols:
+        conn.execute("ALTER TABLE items ADD COLUMN language TEXT NOT NULL DEFAULT 'en'")
+    conn.commit()
+
+
 def upsert_items(conn: sqlite3.Connection, items: list[Item]) -> int:
-    """Insert items, ignoring duplicates by URL. Returns count of new rows."""
     if not items:
         return 0
     rows = [
         (
             it.url,
             it.source,
+            it.category,
             it.title,
             it.summary,
+            it.language,
             it.published_at.isoformat() if it.published_at else None,
             it.fetched_at.isoformat(),
             json.dumps(it.topics),
@@ -54,9 +74,9 @@ def upsert_items(conn: sqlite3.Connection, items: list[Item]) -> int:
     cur = conn.executemany(
         """
         INSERT OR IGNORE INTO items
-          (url, source, title, summary, published_at, fetched_at,
-           topics, regions, swiss_relevance)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (url, source, category, title, summary, language,
+           published_at, fetched_at, topics, regions, swiss_relevance)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         rows,
     )
@@ -72,8 +92,8 @@ def items_in_window(
     until = until or datetime.now(timezone.utc)
     cur = conn.execute(
         """
-        SELECT url, source, title, summary, published_at, fetched_at,
-               topics, regions, swiss_relevance
+        SELECT url, source, category, title, summary, language,
+               published_at, fetched_at, topics, regions, swiss_relevance
         FROM items
         WHERE COALESCE(published_at, fetched_at) >= ?
           AND COALESCE(published_at, fetched_at) <  ?
@@ -98,8 +118,10 @@ def _row_to_item(row: sqlite3.Row) -> Item:
     return Item(
         url=row["url"],
         source=row["source"],
+        category=row["category"],
         title=row["title"],
         summary=row["summary"] or "",
+        language=row["language"],
         published_at=datetime.fromisoformat(row["published_at"]) if row["published_at"] else None,
         fetched_at=datetime.fromisoformat(row["fetched_at"]),
         topics=json.loads(row["topics"]),

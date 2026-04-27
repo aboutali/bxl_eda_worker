@@ -12,7 +12,7 @@ from bxl_eda_worker.models import Item
 
 log = logging.getLogger(__name__)
 
-USER_AGENT = "bxl_eda_worker/0.1 (+https://github.com/aboutali/bxl_eda_worker)"
+USER_AGENT = "bxl_eda_worker/0.2 (+https://github.com/aboutali/bxl_eda_worker)"
 TIMEOUT = httpx.Timeout(20.0, connect=10.0)
 
 
@@ -44,8 +44,10 @@ def fetch_rss(source: Source, *, client: httpx.Client | None = None) -> list[Ite
             Item(
                 url=url,
                 source=source.id,
+                category=source.category,
                 title=title.strip(),
                 summary=_clean_summary(getattr(entry, "summary", "")),
+                language=source.language,
                 published_at=_parse_date(entry),
                 fetched_at=now,
             )
@@ -73,7 +75,6 @@ def _parse_date(entry) -> datetime | None:
 def _clean_summary(html: str) -> str:
     if not html:
         return ""
-    # Cheap strip — feedparser already gives us text-ish content for most feeds.
     from selectolax.parser import HTMLParser
 
     text = HTMLParser(html).text(separator=" ").strip()

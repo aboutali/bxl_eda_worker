@@ -8,6 +8,11 @@ import httpx
 from bxl_eda_worker.classify import classify, is_relevant
 from bxl_eda_worker.config import DB_PATH, ensure_dirs, load_sources
 from bxl_eda_worker.digest import render, write_digest
+from bxl_eda_worker.render_html import (
+    refresh_archive_index,
+    render_html,
+    write_html_outputs,
+)
 from bxl_eda_worker.fetchers import (
     HeadlessUnavailable,
     browser_context,
@@ -86,7 +91,12 @@ def run(window_hours: int = 24, *, skip_headless: bool = False) -> None:
         window_start = now - timedelta(hours=window_hours)
         digest_items = items_in_window(conn, window_start, now)
         digest = render(digest_items, sources, window_start=window_start, window_end=now)
-        path = write_digest(digest, date=now)
-        log.info("wrote digest %s (%d items)", path, len(digest_items))
+        md_path = write_digest(digest, date=now)
+        log.info("wrote digest %s (%d items)", md_path, len(digest_items))
+
+        html_doc = render_html(digest_items, sources, window_start=window_start, window_end=now)
+        index_path, archive_path = write_html_outputs(html_doc, date=now)
+        archive_idx = refresh_archive_index()
+        log.info("wrote html %s + %s + %s", index_path, archive_path, archive_idx)
     finally:
         conn.close()

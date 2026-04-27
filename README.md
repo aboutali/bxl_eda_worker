@@ -41,6 +41,25 @@ $trigger = New-ScheduledTaskTrigger -Daily -At 7:00am
 Register-ScheduledTask -TaskName "bxl_eda_worker" -Action $action -Trigger $trigger
 ```
 
+## Hosted version (GitHub Pages)
+
+Each run also writes a static HTML site to `docs/`:
+
+- `docs/index.html` — latest digest (overwritten daily)
+- `docs/archive/YYYY-MM-DD.html` — versioned per-day digest
+- `docs/archive/index.html` — auto-generated table of contents
+- `docs/style.css` — minimal stylesheet (light + dark mode)
+
+A GitHub Actions workflow at `.github/workflows/daily-digest.yml` runs every day at **06:00 UTC**, regenerates the digest in CI (Playwright Chromium included), and commits `docs/` back to `main`. To activate hosting:
+
+1. **Make the repo public** (or upgrade to GitHub Pro — Pages on private repos requires a paid plan).
+2. **Enable Pages**: repo Settings → Pages → Source: *Deploy from a branch* → Branch: `main`, Folder: `/docs` → Save.
+3. The site will be at `https://aboutali.github.io/bxl_eda_worker/`.
+
+The workflow uses `actions/cache` to persist `data/items.sqlite` across runs (so the daily digest is a true 24h delta) and to cache the Playwright Chromium download (~110 MB).
+
+You can also trigger a build manually from the Actions tab (`Run workflow`).
+
 ## Source taxonomy
 
 Each source carries a `category` that drives digest grouping:

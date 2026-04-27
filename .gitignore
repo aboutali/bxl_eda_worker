@@ -49,3 +49,5 @@ Thumbs.db
 # Runtime output
 data/
 digests/
+# docs/ is intentionally NOT ignored — it's the GitHub Pages source.
+# (style.css is committed; index.html and archive/ are regenerated daily.)

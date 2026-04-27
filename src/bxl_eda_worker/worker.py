@@ -5,14 +5,10 @@ from datetime import datetime, timedelta, timezone
 
 import httpx
 
+from bxl_eda_worker.analyze import compose_headline, enrich_items
 from bxl_eda_worker.classify import classify, is_relevant
 from bxl_eda_worker.config import DB_PATH, ensure_dirs, load_sources
 from bxl_eda_worker.digest import render, write_digest
-from bxl_eda_worker.render_html import (
-    refresh_archive_index,
-    render_html,
-    write_html_outputs,
-)
 from bxl_eda_worker.fetchers import (
     HeadlessUnavailable,
     browser_context,
@@ -21,6 +17,11 @@ from bxl_eda_worker.fetchers import (
     fetch_rss,
 )
 from bxl_eda_worker.fetchers.rss import TIMEOUT, USER_AGENT
+from bxl_eda_worker.render_html import (
+    refresh_archive_index,
+    render_html,
+    write_html_outputs,
+)
 from bxl_eda_worker.storage import (
     connect,
     items_in_window,
@@ -79,22 +80,37 @@ def run(window_hours: int = 24, *, skip_headless: bool = False) -> None:
 
     classified = [classify(it) for it in fresh]
     relevant = [it for it in classified if is_relevant(it)]
-    log.info("classified %d items, %d relevant", len(classified), len(relevant))
+    log.info("classified %d items, %d relevant after keyword filter", len(classified), len(relevant))
 
     conn = connect(DB_PATH)
     try:
-        new_count = upsert_items(conn, relevant)
+        # Enrich BEFORE storing so the LLM-derived fields are persisted, and
+        # so the cache check (in analyze) sees fresh items only this run.
+        enrich_items(relevant)
+
+        upsert_items(conn, relevant)
         pruned = prune_older_than(conn, RETENTION_DAYS)
-        log.info("stored %d new items (pruned %d older than %d days)", new_count, pruned, RETENTION_DAYS)
+        log.info("pruned %d items older than %d days", pruned, RETENTION_DAYS)
 
         now = datetime.now(timezone.utc)
         window_start = now - timedelta(hours=window_hours)
         digest_items = items_in_window(conn, window_start, now)
-        digest = render(digest_items, sources, window_start=window_start, window_end=now)
-        md_path = write_digest(digest, date=now)
-        log.info("wrote digest %s (%d items)", md_path, len(digest_items))
 
-        html_doc = render_html(digest_items, sources, window_start=window_start, window_end=now)
+        headline = compose_headline(digest_items)
+
+        digest = render(
+            digest_items, sources,
+            window_start=window_start, window_end=now,
+            headline=headline,
+        )
+        md_path = write_digest(digest, date=now)
+        log.info("wrote markdown %s (%d items)", md_path, len(digest_items))
+
+        html_doc = render_html(
+            digest_items, sources,
+            window_start=window_start, window_end=now,
+            headline=headline,
+        )
         index_path, archive_path = write_html_outputs(html_doc, date=now)
         archive_idx = refresh_archive_index()
         log.info("wrote html %s + %s + %s", index_path, archive_path, archive_idx)

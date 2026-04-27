@@ -12,6 +12,7 @@ from bxl_eda_worker.digest import (
     TOPIC_LABELS,
     TOPIC_ORDER,
     _dedupe_by_title,
+    _sort_for_section,
 )
 from bxl_eda_worker.models import Item
 
@@ -25,6 +26,7 @@ def render_html(
     *,
     window_start: datetime,
     window_end: datetime,
+    headline: str = "",
 ) -> str:
     by_id = {s.id: s for s in sources}
     items = _dedupe_by_title(items)
@@ -40,7 +42,6 @@ def render_html(
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">",
         f"<title>EU FP Digest — {date_str}</title>",
         "<link rel=\"stylesheet\" href=\"style.css\">",
-        "<link rel=\"alternate\" type=\"application/rss+xml\" title=\"Archive\" href=\"archive/\">",
         "</head>",
         "<body>",
         "<header>",
@@ -54,10 +55,16 @@ def render_html(
         "<main>",
     ]
 
+    if headline:
+        parts.append("<section class=\"headline\">")
+        parts.append("<h2>Today</h2>")
+        parts.append(f"<p class=\"lede\">{html.escape(headline)}</p>")
+        parts.append("</section>")
+
     if swiss_items:
         parts.append("<section class=\"swiss-highlights\">")
         parts.append("<h2>🇨🇭 Swiss-relevance highlights</h2>")
-        for it in swiss_items[:15]:
+        for it in _sort_for_section(swiss_items)[:15]:
             parts.append(_render_item_html(it, by_id))
         if len(swiss_items) > 15:
             parts.append(
@@ -80,13 +87,7 @@ def render_html(
             if not topic_items:
                 continue
             parts.append(f"<h3>{html.escape(TOPIC_LABELS[topic])}</h3>")
-            topic_items.sort(
-                key=lambda it: (
-                    -(by_id[it.source].weight if it.source in by_id else 0),
-                    -(it.published_at or it.fetched_at).timestamp(),
-                )
-            )
-            for it in topic_items:
+            for it in _sort_for_section(topic_items, by_id):
                 parts.append(_render_item_html(it, by_id))
         parts.append("</section>")
 
@@ -105,7 +106,6 @@ def render_html(
 
 
 def render_archive_index(entries: list[tuple[str, int, int]]) -> str:
-    """entries: list of (date_str, item_count, swiss_count). Most recent first."""
     parts: list[str] = [
         "<!DOCTYPE html>",
         "<html lang=\"en\"><head>",
@@ -136,7 +136,6 @@ def write_html_outputs(
     date: datetime,
     docs_dir: Path = DOCS_DIR,
 ) -> tuple[Path, Path]:
-    """Write today's digest as both index.html (latest) and archive/YYYY-MM-DD.html."""
     docs_dir.mkdir(parents=True, exist_ok=True)
     archive = docs_dir / "archive"
     archive.mkdir(parents=True, exist_ok=True)
@@ -152,11 +151,6 @@ def refresh_archive_index(
     *,
     extract_counts=None,
 ) -> Path:
-    """Rebuild docs/archive/index.html by scanning archive/*.html.
-
-    `extract_counts(path)` returns (n_items, n_swiss) for one digest file.
-    Defaults to a regex peek at the header counts.
-    """
     archive = docs_dir / "archive"
     archive.mkdir(parents=True, exist_ok=True)
     extract = extract_counts or _peek_counts
@@ -192,18 +186,28 @@ def _render_item_html(it: Item, by_id: dict[str, Source]) -> str:
         if (it.language and it.language != "en")
         else ""
     )
+    importance = (
+        f" <span class=\"importance\" title=\"importance {it.importance}/5\">{'★' * it.importance}</span>"
+        if it.importance >= 4 else ""
+    )
 
     title = html.escape(it.title)
     url = html.escape(it.url, quote=True)
+
+    summary_text = it.summary_oneliner or it.summary
     summary = (
-        f"<p class=\"summary\">{html.escape(it.summary)}</p>" if it.summary else ""
+        f"<p class=\"summary\">{html.escape(summary_text)}</p>" if summary_text else ""
     )
 
     tags: list[str] = []
+    if it.swiss_rationale:
+        tags.append(
+            f"<span class=\"tag-seco\">🇨🇭 {html.escape(it.swiss_rationale)}</span>"
+        )
+    elif it.swiss_relevance and "sanctions" in it.topics:
+        tags.append("<span class=\"tag-seco\">SECO alignment likely</span>")
     if it.regions:
         tags.append("regions: " + html.escape(", ".join(it.regions)))
-    if it.swiss_relevance and "sanctions" in it.topics:
-        tags.append("<span class=\"tag-seco\">SECO alignment likely</span>")
     tags_html = (
         f"<div class=\"tags\">{' · '.join(tags)}</div>" if tags else ""
     )
@@ -211,7 +215,7 @@ def _render_item_html(it: Item, by_id: dict[str, Source]) -> str:
     return (
         "<article>"
         f"<h4><a href=\"{url}\">{title}</a></h4>"
-        f"<div class=\"src\">{html.escape(source_name)}{badge}{lang}"
+        f"<div class=\"src\">{html.escape(source_name)}{badge}{lang}{importance}"
         f" · <time datetime=\"{when.isoformat()}\">{_fmt(when)}</time></div>"
         f"{summary}{tags_html}"
         "</article>"

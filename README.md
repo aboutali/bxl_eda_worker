@@ -17,9 +17,16 @@ pip install -e .
 # which sits behind a JS anti-bot interstitial.
 pip install -e ".[headless]"
 playwright install chromium   # ~110 MB
+
+# Optional: LLM enrichment (per-item Opus 4.7 summary/classification
+# + a daily synthesis headline at the top of the digest).
+pip install -e ".[llm]"
+$env:ANTHROPIC_API_KEY = "sk-ant-..."   # or `setx` to persist
 ```
 
 If you skip the headless install, the worker logs a warning and keeps going with the other sources. You can also force it with `--skip-headless` for a fast dry run.
+
+If you skip the LLM install or don't set `ANTHROPIC_API_KEY`, the worker uses the keyword classifier alone and the digest renders without a top-of-page synthesis headline. Site still builds.
 
 ## Run
 
@@ -54,7 +61,8 @@ A GitHub Actions workflow at `.github/workflows/daily-digest.yml` runs every day
 
 1. **Make the repo public** (or upgrade to GitHub Pro — Pages on private repos requires a paid plan).
 2. **Enable Pages**: repo Settings → Pages → Source: *Deploy from a branch* → Branch: `main`, Folder: `/docs` → Save.
-3. The site will be at `https://aboutali.github.io/bxl_eda_worker/`.
+3. **(Optional) Add the Anthropic key** for the daily synthesis headline + per-item enrichment: repo Settings → Secrets and variables → Actions → New repository secret → name `ANTHROPIC_API_KEY`, value `sk-ant-...`. The workflow already passes it through; without it the worker falls back to the keyword classifier and skips the headline.
+4. The site will be at `https://aboutali.github.io/bxl_eda_worker/`.
 
 The workflow uses `actions/cache` to persist `data/items.sqlite` across runs (so the daily digest is a true 24h delta) and to cache the Playwright Chromium download (~110 MB).
 

@@ -77,6 +77,35 @@ h3 {
   font-size: .8rem;
 }
 
+section.headline {
+  margin: 1rem 0 2rem;
+  padding: 1rem 1.25rem;
+  background: var(--code-bg);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+}
+section.headline h2 {
+  margin-top: 0;
+  border-bottom: none;
+  padding-bottom: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+section.headline .lede {
+  margin: .5rem 0 0;
+  font-size: 1.05rem;
+  line-height: 1.55;
+}
+
+.importance {
+  color: var(--swiss);
+  font-size: .75rem;
+  letter-spacing: .05em;
+  margin-left: .35rem;
+}
+
 .swiss-highlights {
   background: var(--highlight-bg);
   border: 1px solid var(--highlight-border);

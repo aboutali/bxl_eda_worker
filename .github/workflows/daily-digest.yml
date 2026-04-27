@@ -46,7 +46,7 @@ jobs:
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[headless]"
+          pip install -e ".[headless,llm]"
 
       - name: Install Chromium
         if: steps.playwright-cache.outputs.cache-hit != 'true'
@@ -57,6 +57,10 @@ jobs:
         run: python -m playwright install-deps chromium
 
       - name: Run worker
+        env:
+          # Optional. If unset, the worker logs a warning and falls back to the
+          # keyword classifier — site still builds.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: python -m bxl_eda_worker run
 
       - name: Commit and push docs/

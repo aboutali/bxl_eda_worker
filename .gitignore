@@ -45,3 +45,7 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+
+# Runtime output
+data/
+digests/

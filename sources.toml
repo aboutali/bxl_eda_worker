@@ -1,0 +1,67 @@
+# Source list for bxl_eda_worker.
+# Edit URLs freely — they are not validated until fetch time.
+# `type` is one of: "rss", "eeas_html".
+# Verified state as of 2026-04.
+
+[[sources]]
+id = "eeas_press"
+name = "EEAS Press Material"
+type = "eeas_html"
+url = "https://www.eeas.europa.eu/eeas/press-material_en"
+weight = 3
+# EEAS retired its public RSS; we scrape the press-material listing page.
+# Per-item dates are not exposed in the listing, so first-seen wins.
+
+[[sources]]
+id = "ep_news"
+name = "European Parliament — News"
+type = "rss"
+url = "https://www.europarl.europa.eu/rss/doc/top-stories/en.xml"
+weight = 2
+
+[[sources]]
+id = "ep_afet"
+name = "European Parliament — AFET Committee"
+type = "rss"
+url = "https://www.europarl.europa.eu/rss/committee/afet/en.xml"
+weight = 2
+
+[[sources]]
+id = "politico_eu"
+name = "Politico Europe"
+type = "rss"
+url = "https://www.politico.eu/feed/"
+weight = 2
+
+[[sources]]
+id = "commission_press"
+name = "European Commission — Press Corner"
+type = "rss"
+url = "https://ec.europa.eu/commission/presscorner/api/rss?language=en"
+weight = 2
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DISABLED: Council of the EU
+# Both consilium.europa.eu RSS endpoints (press releases + meetings calendar)
+# are now bot-protected (HTTP 403 with a "Browser check" interstitial). Plain
+# httpx + browser User-Agent is not enough to get past it. Options to revive:
+#   1. Run via a headless browser (Playwright) — heavyweight for a daily job.
+#   2. Find a third-party mirror or use newsroom.consilium.europa.eu (no RSS
+#      there either, would need scraping).
+#   3. Rely on Commission press corner + Politico, which both report FAC
+#      conclusions when they land.
+# Leaving the entries here as a reminder, commented out:
+#
+# [[sources]]
+# id = "council_press"
+# name = "Council of the EU — Press Releases"
+# type = "rss"
+# url = "https://www.consilium.europa.eu/en/press/press-releases/?rss=1"
+# weight = 3
+#
+# [[sources]]
+# id = "council_meetings"
+# name = "Council of the EU — Meetings (incl. FAC)"
+# type = "rss"
+# url = "https://www.consilium.europa.eu/en/meetings/calendar/?rss=1"
+# weight = 3

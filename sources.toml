@@ -110,6 +110,51 @@ category = "eu_institution"
 weight = 2
 language = "en"
 
+[[sources]]
+id = "ep_deve"
+name = "EP/DEVE — Development Committee"
+type = "rss"
+url = "https://www.europarl.europa.eu/rss/committee/deve/en.xml"
+category = "eu_institution"
+weight = 2
+language = "en"
+
+[[sources]]
+id = "ep_dpal"
+name = "EP/DPAL — Delegation for relations with Palestine"
+type = "rss"
+url = "https://www.europarl.europa.eu/rss/delegation/dpal/en.xml"
+category = "eu_institution"
+weight = 3
+language = "en"
+
+[[sources]]
+id = "ep_dmas"
+name = "EP/DMAS — Delegation for relations with the Mashreq countries"
+type = "rss"
+url = "https://www.europarl.europa.eu/rss/delegation/dmas/en.xml"
+category = "eu_institution"
+weight = 3
+language = "en"
+
+[[sources]]
+id = "ep_dmag"
+name = "EP/DMAG — Delegation for relations with the Maghreb countries"
+type = "rss"
+url = "https://www.europarl.europa.eu/rss/delegation/dmag/en.xml"
+category = "eu_institution"
+weight = 2
+language = "en"
+
+[[sources]]
+id = "ep_dmed"
+name = "EP/DMED — Parliamentary Assembly of the Union for the Mediterranean"
+type = "rss"
+url = "https://www.europarl.europa.eu/rss/delegation/dmed/en.xml"
+category = "eu_institution"
+weight = 2
+language = "en"
+
 # ─────────────────────────────────────────────────────────────────────────────
 # PRESS — Brussels-focused EU press
 # ─────────────────────────────────────────────────────────────────────────────

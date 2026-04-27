@@ -179,11 +179,15 @@ def _enrich_one(client: "Anthropic", item: Item) -> dict:
         f"Summary: {item.summary or '(none)'}"
     )
     # Prompt caching on the system block — break-even at 2 calls; we make 30+.
+    # cache_control goes on the system content block, not as a top-level kwarg.
     resp = client.messages.parse(
         model=MODEL,
         max_tokens=ITEM_MAX_TOKENS,
-        cache_control={"type": "ephemeral"},
-        system=SYSTEM_PROMPT_ITEM,
+        system=[{
+            "type": "text",
+            "text": SYSTEM_PROMPT_ITEM,
+            "cache_control": {"type": "ephemeral"},
+        }],
         messages=[{"role": "user", "content": user_text}],
         output_format=ItemEnrichment,
     )

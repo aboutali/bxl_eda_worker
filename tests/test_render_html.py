@@ -79,6 +79,39 @@ def test_archive_index_lists_files(tmp_path: Path):
     assert "1 Swiss-relevance" in text
 
 
+def test_archive_index_handles_weekly_entries(tmp_path: Path):
+    archive_dir = tmp_path / "archive"
+    archive_dir.mkdir()
+    (archive_dir / "2026-W17.html").write_text(
+        "x 23 items y Swiss-relevance 4 z", encoding="utf-8"
+    )
+    (archive_dir / "2026-04-27.html").write_text(
+        "x 12 items y Swiss-relevance 3 z", encoding="utf-8"
+    )
+    (archive_dir / "2026-W01.html").write_text(
+        "x 18 items y Swiss-relevance 2 z", encoding="utf-8"
+    )
+    out = refresh_archive_index(docs_dir=tmp_path)
+    text = out.read_text(encoding="utf-8")
+    # Daily 04-27 is more recent than the Monday of W17 (Apr 20) — should come first.
+    idx_daily = text.find("2026-04-27")
+    idx_w17 = text.find("2026-W17")
+    idx_w01 = text.find("2026-W01")
+    assert 0 <= idx_daily < idx_w17 < idx_w01
+    assert "weekly" in text  # the kind tag
+    assert "Apr 20" in text or "Apr 26" in text  # human range label on weeklies
+
+
+def test_archive_index_ignores_non_digest_files(tmp_path: Path):
+    archive_dir = tmp_path / "archive"
+    archive_dir.mkdir()
+    (archive_dir / "2026-04-27.html").write_text("x 1 items y Swiss-relevance 0 z", encoding="utf-8")
+    (archive_dir / "random.html").write_text("ignore me", encoding="utf-8")
+    out = refresh_archive_index(docs_dir=tmp_path)
+    text = out.read_text(encoding="utf-8")
+    assert "random.html" not in text
+
+
 def test_swiss_section_appears_first_in_html():
     sources = [_src("s", "eu_institution")]
     items = [

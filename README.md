@@ -38,6 +38,17 @@ python -m bxl_eda_worker run --skip-headless      # fast, no Chromium
 
 Output: `digests/YYYY-MM-DD.md`. Dedup store: `data/items.sqlite` (90-day retention).
 
+### Seeding the archive (one-shot, optional)
+
+For design-fidelity backfill, you can generate a fictitious weekly archive covering 2026-W01 through last completed week:
+
+```powershell
+$env:ANTHROPIC_API_KEY = "sk-ant-..."
+python -m bxl_eda_worker seed-archive
+```
+
+This calls Opus 4.7 once per week (~17 weeks × 2 calls ≈ $3–4 one-time) to invent ~15 plausible items + a synthesis headline per week, and writes each as `docs/archive/2026-WXX.html`. Idempotent — already-seeded weeks are skipped (use `--force` to regenerate). Each generated page carries a "Simulated weekly digest" disclaimer in its body. The SQLite dedup store is **not** touched, so the daily cron stays clean.
+
 ## Schedule it (Windows Task Scheduler)
 
 Daily 07:00 CET:

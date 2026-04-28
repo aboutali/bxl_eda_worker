@@ -23,12 +23,27 @@ def main() -> None:
              "Chromium isn't installed or you want a fast dry run.",
     )
 
+    seed_p = sub.add_parser(
+        "seed-archive",
+        help="Generate a fictitious weekly archive for 2026-W01..current-1. "
+             "Idempotent — skips weeks already on disk. Requires ANTHROPIC_API_KEY.",
+    )
+    seed_p.add_argument(
+        "--force",
+        action="store_true",
+        help="Regenerate weeks even if the file already exists.",
+    )
+
     args = parser.parse_args()
     if args.cmd in (None, "run"):
         run(
             window_hours=getattr(args, "window_hours", 24),
             skip_headless=getattr(args, "skip_headless", False),
         )
+    elif args.cmd == "seed-archive":
+        from bxl_eda_worker.seed import seed_archive
+        n = seed_archive(force=args.force)
+        print(f"Seeded {n} weeks.")
     else:
         parser.error(f"unknown command: {args.cmd}")
 

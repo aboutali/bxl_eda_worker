@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import html
+import re
 from collections import defaultdict
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 from bxl_eda_worker.config import REPO_ROOT, Source
@@ -105,7 +106,8 @@ def render_html(
     return "\n".join(parts)
 
 
-def render_archive_index(entries: list[tuple[str, int, int]]) -> str:
+def render_archive_index(entries: list[dict]) -> str:
+    """`entries`: list of {slug, label, sort_date, n_items, n_swiss, kind}."""
     parts: list[str] = [
         "<!DOCTYPE html>",
         "<html lang=\"en\"><head>",
@@ -120,10 +122,14 @@ def render_archive_index(entries: list[tuple[str, int, int]]) -> str:
         "</header>",
         "<main><ul class=\"archive-list\">",
     ]
-    for date_str, n_items, n_swiss in entries:
+    for e in entries:
+        kind_tag = (
+            ' <span class="kind kind-weekly">weekly</span>' if e["kind"] == "weekly" else ""
+        )
         parts.append(
-            f"<li><a href=\"{html.escape(date_str)}.html\">{html.escape(date_str)}</a>"
-            f" <span class=\"meta\">{n_items} items · {n_swiss} Swiss-relevance</span></li>"
+            f"<li><a href=\"{html.escape(e['slug'])}.html\">{html.escape(e['label'])}</a>"
+            f"{kind_tag}"
+            f" <span class=\"meta\">{e['n_items']} items · {e['n_swiss']} Swiss-relevance</span></li>"
         )
     parts.append("</ul></main>")
     parts.append("</body></html>")
@@ -154,19 +160,44 @@ def refresh_archive_index(
     archive = docs_dir / "archive"
     archive.mkdir(parents=True, exist_ok=True)
     extract = extract_counts or _peek_counts
-    files = sorted(archive.glob("20??-??-??.html"), reverse=True)
-    entries: list[tuple[str, int, int]] = []
-    for f in files:
-        date_str = f.stem
+
+    daily_re = re.compile(r"^(20\d\d-\d\d-\d\d)$")
+    weekly_re = re.compile(r"^(20\d\d)-W(\d\d)$")
+
+    entries: list[dict] = []
+    for f in archive.glob("*.html"):
+        if f.name == "index.html":
+            continue
+        slug = f.stem
         n_items, n_swiss = extract(f)
-        entries.append((date_str, n_items, n_swiss))
+        if m := daily_re.match(slug):
+            sort_date = date.fromisoformat(m.group(1))
+            entries.append({
+                "slug": slug, "label": slug, "sort_date": sort_date,
+                "n_items": n_items, "n_swiss": n_swiss, "kind": "daily",
+            })
+        elif m := weekly_re.match(slug):
+            year, week = int(m.group(1)), int(m.group(2))
+            try:
+                monday = date.fromisocalendar(year, week, 1)
+                sunday = date.fromisocalendar(year, week, 7)
+            except ValueError:
+                continue
+            entries.append({
+                "slug": slug,
+                "label": f"{slug} · {monday.strftime('%b %d')}–{sunday.strftime('%b %d')}",
+                "sort_date": monday,
+                "n_items": n_items, "n_swiss": n_swiss, "kind": "weekly",
+            })
+        # Anything else is ignored.
+
+    entries.sort(key=lambda e: e["sort_date"], reverse=True)
     out = archive / "index.html"
     out.write_text(render_archive_index(entries), encoding="utf-8")
     return out
 
 
 def _peek_counts(path: Path) -> tuple[int, int]:
-    import re
     text = path.read_text(encoding="utf-8")
     m_items = re.search(r"(\d+) items", text)
     m_swiss = re.search(r"Swiss-relevance (\d+)", text)

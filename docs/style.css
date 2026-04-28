@@ -221,6 +221,32 @@ ul.archive-list a {
   color: var(--accent);
   text-decoration: none;
   font-weight: 500;
-  margin-right: 1rem;
+  margin-right: .5rem;
 }
 ul.archive-list a:hover { text-decoration: underline; }
+
+ul.archive-list .kind {
+  display: inline-block;
+  font-size: .65rem;
+  padding: .05rem .35rem;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-right: .5rem;
+  vertical-align: 1px;
+}
+ul.archive-list .kind-weekly {
+  background: var(--code-bg);
+  color: var(--muted);
+}
+
+aside.simulated {
+  background: var(--code-bg);
+  border-left: 3px solid var(--muted);
+  border-radius: 4px;
+  padding: .5rem .85rem;
+  margin: 0 0 1.5rem;
+  font-size: .8rem;
+  color: var(--muted);
+  font-style: italic;
+}

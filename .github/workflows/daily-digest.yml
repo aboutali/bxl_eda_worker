@@ -54,12 +54,14 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-chromium-${{ steps.pw-version.outputs.version }}
 
+      # Always run install: it's idempotent when everything is present, and
+      # downloads anything missing from the restored cache. This covers the
+      # case where the cache predates Playwright splitting out the separate
+      # chrome-headless-shell binary used for headless launches.
       - name: Install Chromium
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: python -m playwright install --with-deps chromium
+        run: python -m playwright install chromium
 
-      - name: Install Chromium system deps (cache hit path)
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
+      - name: Install Chromium system deps
         run: python -m playwright install-deps chromium
 
       - name: Run worker

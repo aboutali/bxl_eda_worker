@@ -48,21 +48,15 @@ jobs:
         run: echo "version=$(python -c 'import playwright, sys; sys.stdout.write(playwright.__version__)')" >> "$GITHUB_OUTPUT"
 
       - name: Cache Playwright browsers
-        id: playwright-cache
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-chromium-${{ steps.pw-version.outputs.version }}
 
-      # Always run install: it's idempotent when everything is present, and
-      # downloads anything missing from the restored cache. This covers the
-      # case where the cache predates Playwright splitting out the separate
-      # chrome-headless-shell binary used for headless launches.
+      # Idempotent: a no-op when the restored cache is complete, and downloads
+      # anything missing otherwise (so an incomplete cache self-heals).
       - name: Install Chromium
-        run: python -m playwright install chromium
-
-      - name: Install Chromium system deps
-        run: python -m playwright install-deps chromium
+        run: python -m playwright install --with-deps chromium
 
       - name: Run worker
         env:

@@ -229,6 +229,35 @@ category = "press_swiss"
 weight = 2
 language = "de"
 
+# Le Temps (Geneva, French-language quality daily). /rss is just an HTML portal;
+# the real feed is /feed (whole-site). Paywalled articles still expose
+# title + standfirst in the feed, which is all the classifier needs.
+[[sources]]
+id = "letemps"
+name = "Le Temps"
+type = "rss"
+url = "https://www.letemps.ch/feed"
+category = "press_swiss"
+weight = 2
+language = "fr"
+
+# Aargauer Zeitung — Ausland section (CH Media). Regional masthead but its
+# international desk carries the shared CH Media foreign-affairs wire.
+[[sources]]
+id = "aargauer_intl"
+name = "Aargauer Zeitung — International"
+type = "rss"
+url = "https://www.aargauerzeitung.ch/international.rss"
+category = "press_swiss"
+weight = 1
+language = "de"
+
+# swissinfo.ch (SWI) — DISABLED: the relaunched site dropped its news RSS. The
+# old /eng/services/rss now 410s, and the page <head> exposes no
+# <link rel="alternate" type="application/rss+xml"> feed (only an "Inside
+# Geneva" podcast). Would need headless_html scraping of e.g. /eng/geopolitics/.
+# NZZ / Tagi / SRF / Le Temps cover the same ground meanwhile.
+
 # ─────────────────────────────────────────────────────────────────────────────
 # PRESS — international
 # ─────────────────────────────────────────────────────────────────────────────
@@ -241,6 +270,30 @@ url = "https://www.monde-diplomatique.fr/recents.xml"
 category = "press_intl"
 weight = 1
 language = "fr"
+
+# Financial Times — World desk. Broad global feed that reliably carries EU,
+# Russia/Ukraine and Middle East coverage. Paywalled, but RSS gives
+# headline + standfirst. (FT also exposes /world/europe and /world/mideast
+# section feeds if a narrower cut is wanted later.)
+[[sources]]
+id = "ft_world"
+name = "Financial Times — World"
+type = "rss"
+url = "https://www.ft.com/world?format=rss"
+category = "press_intl"
+weight = 2
+language = "en"
+
+# Deutsche Welle — World (English). German international broadcaster; strong,
+# free EU / Middle East coverage.
+[[sources]]
+id = "dw_world"
+name = "Deutsche Welle — World"
+type = "rss"
+url = "https://rss.dw.com/rdf/rss-en-world"
+category = "press_intl"
+weight = 1
+language = "en"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # THINK TANKS
@@ -263,6 +316,22 @@ url = "https://www.bruegel.org/rss.xml"
 category = "think_tank"
 weight = 1
 language = "en"
+
+# International Crisis Group — field analysis on conflicts, sanctions and the
+# Middle East. High-signal for this digest's Middle East / FP beats.
+[[sources]]
+id = "crisisgroup"
+name = "International Crisis Group"
+type = "rss"
+url = "https://www.crisisgroup.org/rss.xml"
+category = "think_tank"
+weight = 1
+language = "en"
+
+# Carnegie Europe — DISABLED: the carnegieendowment.org relaunch serves a
+# JS-rendered SPA for every /rss path (carnegieeurope.eu/rss 308-redirects to
+# /europe/rss, which returns HTML with 0 feed entries). No static RSS endpoint
+# found; would need headless rendering. ECFR / Bruegel cover the EU-FP angle.
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DISABLED — Swiss official sites (admin.ch / SECO / EDA)

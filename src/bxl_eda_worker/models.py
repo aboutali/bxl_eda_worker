@@ -27,6 +27,14 @@ class Item(BaseModel):
     swiss_rationale: str = ""
     importance: int = 0  # 1–5; 0 means "not enriched"
 
+    # Cross-source clustering (set at render time by cluster.py; not persisted).
+    # cluster_role: "" (singleton), "primary", or "secondary".
+    cluster_id: str = ""
+    cluster_role: str = ""
+    # Peer items in the same cluster, recorded only on the primary.
+    # Each: {"source": <id>, "url": <url>, "title": <title>}.
+    cluster_peers: list[dict[str, str]] = Field(default_factory=list)
+
 
 class ItemEnrichment(BaseModel):
     """Schema for messages.parse() per-item enrichment response."""

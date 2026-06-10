@@ -112,17 +112,57 @@ def test_archive_index_ignores_non_digest_files(tmp_path: Path):
     assert "random.html" not in text
 
 
-def test_swiss_section_appears_first_in_html():
+def _win():
+    now = datetime.now(timezone.utc)
+    return dict(window_start=now - timedelta(hours=24), window_end=now)
+
+
+def test_html_no_swiss_section_swiss_item_marked_inline():
     sources = [_src("s", "eu_institution")]
     items = [
         _item("https://t/1", "s", "eu_institution", "Sanctions packagex",
               topics=["sanctions"], swiss_relevance=True),
-        _item("https://t/2", "s", "eu_institution", "Routine FP statementy",
-              topics=["foreign_policy"]),
     ]
-    out = render_html(items, sources,
-                     window_start=datetime.now(timezone.utc) - timedelta(hours=24),
-                     window_end=datetime.now(timezone.utc))
-    swiss_idx = out.find("Swiss-relevance highlights")
-    eu_idx = out.find("EU institutions")
-    assert 0 < swiss_idx < eu_idx
+    out = render_html(items, sources, **_win())
+    assert "swiss-highlights" not in out          # dedicated section removed
+    assert "Swiss-relevance highlights" not in out
+    assert "tag-seco" in out                       # marked inline instead
+
+
+def test_html_multi_topic_item_appears_exactly_once():
+    sources = [_src("s", "eu_institution")]
+    items = [_item("https://t/dup", "s", "eu_institution",
+                   "Russia sanctions hit Mideast trade",
+                   topics=["sanctions", "middle_east"])]
+    out = render_html(items, sources, **_win())
+    assert out.count("https://t/dup") == 1
+
+
+def test_html_multi_topic_item_shows_topic_chips():
+    sources = [_src("s", "eu_institution")]
+    items = [_item("https://t/dup", "s", "eu_institution",
+                   "Russia sanctions hit Mideast trade",
+                   topics=["sanctions", "middle_east"])]
+    out = render_html(items, sources, **_win())
+    assert '<span class="topic">Sanctions</span>' in out
+    assert '<span class="topic">Middle East</span>' in out
+
+
+def test_html_topic_subheaders_gone_but_category_remains():
+    sources = [_src("s", "eu_institution")]
+    items = [
+        _item("https://t/1", "s", "eu_institution", "A", topics=["sanctions"]),
+        _item("https://t/2", "s", "eu_institution", "B", topics=["middle_east"]),
+    ]
+    out = render_html(items, sources, **_win())
+    assert "<h3>Sanctions</h3>" not in out
+    assert "<h3>Middle East</h3>" not in out
+    assert "<h2>🇪🇺 EU institutions</h2>" in out  # category header stays
+
+
+def test_html_swiss_item_without_rationale_still_marked():
+    sources = [_src("s", "eu_institution")]
+    items = [_item("https://t/1", "s", "eu_institution", "Bern watches FP shift",
+                   topics=["foreign_policy"], swiss_relevance=True)]
+    out = render_html(items, sources, **_win())
+    assert "🇨🇭 Swiss-relevant" in out

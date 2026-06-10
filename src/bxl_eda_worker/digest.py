@@ -25,10 +25,11 @@ CATEGORY_LABELS = {
 }
 
 TOPIC_ORDER = ("sanctions", "middle_east", "foreign_policy")
-TOPIC_LABELS = {
+# Labels for the per-item topic tags.
+TOPIC_TAG_LABELS = {
     "sanctions":      "Sanctions",
     "middle_east":    "Middle East",
-    "foreign_policy": "Foreign Policy (general)",
+    "foreign_policy": "Foreign Policy",
 }
 
 
@@ -41,19 +42,21 @@ def render(
     headline: str = "",
 ) -> str:
     by_id = {s.id: s for s in sources}
-    items = _dedupe_by_title(items)
+    n_collapsed = sum(1 for it in items if it.cluster_role == "secondary")
+    items = [it for it in _dedupe_by_title(items) if it.cluster_role != "secondary"]
     counts = {t: sum(1 for it in items if t in it.topics) for t in TOPIC_ORDER}
-    swiss_items = [it for it in items if it.swiss_relevance]
+    n_swiss = sum(1 for it in items if it.swiss_relevance)
 
     lines: list[str] = []
     date_str = window_end.strftime("%Y-%m-%d")
     lines.append(f"# EU Foreign Policy & Sanctions Digest — {date_str}")
     lines.append("")
+    collapsed_note = f" ({n_collapsed} cross-source duplicates collapsed)" if n_collapsed else ""
     lines.append(
         f"Window: {_fmt(window_start)} → {_fmt(window_end)} (UTC) · "
-        f"{len(items)} items · "
+        f"{len(items)} items{collapsed_note} · "
         f"Sanctions {counts['sanctions']} · Middle East {counts['middle_east']} · "
-        f"FP {counts['foreign_policy']} · Swiss-relevance {len(swiss_items)}"
+        f"FP {counts['foreign_policy']} · Swiss-relevance {n_swiss}"
     )
     lines.append("")
 
@@ -61,15 +64,6 @@ def render(
         lines.append("## Today")
         lines.append("")
         lines.append(headline)
-        lines.append("")
-
-    if swiss_items:
-        lines.append("## 🇨🇭 Swiss-relevance highlights")
-        lines.append("")
-        for it in _sort_for_section(swiss_items)[:15]:
-            lines.extend(_render_item(it, by_id))
-        if len(swiss_items) > 15:
-            lines.append(f"  _… and {len(swiss_items) - 15} more in sections below._")
         lines.append("")
 
     by_cat: dict[str, list[Item]] = defaultdict(list)
@@ -82,15 +76,9 @@ def render(
             continue
         lines.append(f"## {CATEGORY_LABELS[cat]}")
         lines.append("")
-        for topic in TOPIC_ORDER:
-            topic_items = [it for it in cat_items if topic in it.topics]
-            if not topic_items:
-                continue
-            lines.append(f"### {TOPIC_LABELS[topic]}")
-            lines.append("")
-            for it in _sort_for_section(topic_items, by_id):
-                lines.extend(_render_item(it, by_id))
-            lines.append("")
+        for it in _sort_for_section(cat_items, by_id):
+            lines.extend(_render_item(it, by_id))
+        lines.append("")
 
     if not items:
         lines.append("_No relevant items in this window._")
@@ -124,15 +112,32 @@ def _render_item(it: Item, by_id: dict[str, Source]) -> list[str]:
     elif it.summary:
         out.append(f"  > {it.summary}")
     tags = []
-    if it.swiss_rationale:
-        tags.append(f"🇨🇭 {it.swiss_rationale}")
-    elif it.swiss_relevance and "sanctions" in it.topics:
-        tags.append("SECO alignment likely")
+    if it.swiss_relevance:
+        if it.swiss_rationale:
+            tags.append(f"🇨🇭 {it.swiss_rationale}")
+        elif "sanctions" in it.topics:
+            tags.append("🇨🇭 SECO alignment likely")
+        else:
+            tags.append("🇨🇭 Swiss-relevant")
+    topic_names = " · ".join(TOPIC_TAG_LABELS[t] for t in TOPIC_ORDER if t in it.topics)
+    if topic_names:
+        tags.append(f"🏷 {topic_names}")
     if it.regions:
         tags.append("regions: " + ", ".join(it.regions))
     if tags:
         out.append(f"  _{' · '.join(tags)}_")
+    if it.cluster_peers:
+        peer_links = [
+            f"[{_peer_name(p, by_id)}]({p['url']})"
+            for p in it.cluster_peers
+        ]
+        out.append(f"  _also: {', '.join(peer_links)}_")
     return out
+
+
+def _peer_name(peer: dict, by_id: dict[str, Source]) -> str:
+    src = by_id.get(peer.get("source", ""))
+    return src.name if src else peer.get("source", "")
 
 
 def _fmt(dt: datetime) -> str:

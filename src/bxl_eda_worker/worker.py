@@ -7,6 +7,7 @@ import httpx
 
 from bxl_eda_worker.analyze import compose_headline, enrich_items
 from bxl_eda_worker.classify import classify, is_relevant
+from bxl_eda_worker.cluster import cluster_items, is_primary_or_singleton
 from bxl_eda_worker.config import DB_PATH, ensure_dirs, load_sources
 from bxl_eda_worker.digest import render, write_digest
 from bxl_eda_worker.fetchers import (
@@ -96,7 +97,12 @@ def run(window_hours: int = 24, *, skip_headless: bool = False) -> None:
         window_start = now - timedelta(hours=window_hours)
         digest_items = items_in_window(conn, window_start, now)
 
-        headline = compose_headline(digest_items)
+        # Cluster cross-source duplicates before rendering. Headline gets only
+        # primaries+singletons so the LLM doesn't see the same story twice.
+        cluster_items(digest_items, sources)
+        primary_items = [it for it in digest_items if is_primary_or_singleton(it)]
+
+        headline = compose_headline(primary_items)
 
         digest = render(
             digest_items, sources,

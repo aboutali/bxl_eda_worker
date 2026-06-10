@@ -76,16 +76,59 @@ def test_headline_section_omitted_when_empty():
     assert "## Today" not in out
 
 
-def test_swiss_relevance_highlights_appear_first():
+def test_no_swiss_highlights_section_swiss_item_marked_inline():
     sources = [_src("eeas", "eu_institution")]
     items = [
         _item("https://t/1", "eeas", "eu_institution", "Sanctions package",
               topics=["sanctions"], swiss_relevance=True),
     ]
     out = render(items, sources, window_start=_now() - timedelta(hours=24), window_end=_now())
-    highlights_idx = out.find("Swiss-relevance highlights")
-    eu_section_idx = out.find("🇪🇺 EU institutions")
-    assert 0 < highlights_idx < eu_section_idx
+    assert "Swiss-relevance highlights" not in out  # dedicated section removed
+    assert "🇨🇭 SECO alignment likely" in out         # marked inline instead
+
+
+def test_multi_topic_item_appears_exactly_once():
+    sources = [_src("eeas", "eu_institution")]
+    items = [
+        _item("https://t/dup", "eeas", "eu_institution",
+              "Russia sanctions hit Mideast trade",
+              topics=["sanctions", "middle_east"]),
+    ]
+    out = render(items, sources, window_start=_now() - timedelta(hours=24), window_end=_now())
+    assert out.count("https://t/dup") == 1
+
+
+def test_multi_topic_item_shows_all_topics_as_tags():
+    sources = [_src("eeas", "eu_institution")]
+    items = [
+        _item("https://t/dup", "eeas", "eu_institution",
+              "Russia sanctions hit Mideast trade",
+              topics=["sanctions", "middle_east"]),
+    ]
+    out = render(items, sources, window_start=_now() - timedelta(hours=24), window_end=_now())
+    assert "🏷 Sanctions · Middle East" in out
+
+
+def test_topic_subsection_headers_are_gone_but_category_remains():
+    sources = [_src("eeas", "eu_institution")]
+    items = [
+        _item("https://t/1", "eeas", "eu_institution", "A", topics=["sanctions"]),
+        _item("https://t/2", "eeas", "eu_institution", "B", topics=["middle_east"]),
+    ]
+    out = render(items, sources, window_start=_now() - timedelta(hours=24), window_end=_now())
+    assert "### Sanctions" not in out
+    assert "### Middle East" not in out
+    assert "## 🇪🇺 EU institutions" in out  # category header stays
+
+
+def test_swiss_relevant_item_without_rationale_still_marked():
+    sources = [_src("eeas", "eu_institution")]
+    items = [
+        _item("https://t/1", "eeas", "eu_institution", "Bern watches FP shift",
+              topics=["foreign_policy"], swiss_relevance=True),
+    ]
+    out = render(items, sources, window_start=_now() - timedelta(hours=24), window_end=_now())
+    assert "🇨🇭 Swiss-relevant" in out
 
 
 def test_badge_renders_next_to_source_name():

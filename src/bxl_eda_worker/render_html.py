@@ -10,8 +10,8 @@ from bxl_eda_worker.config import REPO_ROOT, Source
 from bxl_eda_worker.digest import (
     CATEGORY_LABELS,
     CATEGORY_ORDER,
-    TOPIC_LABELS,
     TOPIC_ORDER,
+    TOPIC_TAG_LABELS,
     _dedupe_by_title,
     _sort_for_section,
 )
@@ -30,9 +30,10 @@ def render_html(
     headline: str = "",
 ) -> str:
     by_id = {s.id: s for s in sources}
-    items = _dedupe_by_title(items)
+    n_collapsed = sum(1 for it in items if it.cluster_role == "secondary")
+    items = [it for it in _dedupe_by_title(items) if it.cluster_role != "secondary"]
     counts = {t: sum(1 for it in items if t in it.topics) for t in TOPIC_ORDER}
-    swiss_items = [it for it in items if it.swiss_relevance]
+    n_swiss = sum(1 for it in items if it.swiss_relevance)
 
     date_str = window_end.strftime("%Y-%m-%d")
     parts: list[str] = [
@@ -48,9 +49,10 @@ def render_html(
         "<header>",
         "<h1>EU Foreign Policy &amp; Sanctions Digest</h1>",
         f"<div class=\"meta\">{date_str} · {_fmt(window_start)} → {_fmt(window_end)} UTC</div>",
-        f"<div class=\"meta\">{len(items)} items · "
-        f"Sanctions {counts['sanctions']} · Middle East {counts['middle_east']} · "
-        f"FP {counts['foreign_policy']} · Swiss-relevance {len(swiss_items)}</div>",
+        f"<div class=\"meta\">{len(items)} items"
+        + (f" <span class=\"collapsed\">({n_collapsed} cross-source duplicates collapsed)</span>" if n_collapsed else "")
+        + f" · Sanctions {counts['sanctions']} · Middle East {counts['middle_east']} · "
+        f"FP {counts['foreign_policy']} · Swiss-relevance {n_swiss}</div>",
         "<nav><a href=\"archive/\">Archive →</a></nav>",
         "</header>",
         "<main>",
@@ -60,17 +62,6 @@ def render_html(
         parts.append("<section class=\"headline\">")
         parts.append("<h2>Today</h2>")
         parts.append(f"<p class=\"lede\">{html.escape(headline)}</p>")
-        parts.append("</section>")
-
-    if swiss_items:
-        parts.append("<section class=\"swiss-highlights\">")
-        parts.append("<h2>🇨🇭 Swiss-relevance highlights</h2>")
-        for it in _sort_for_section(swiss_items)[:15]:
-            parts.append(_render_item_html(it, by_id))
-        if len(swiss_items) > 15:
-            parts.append(
-                f"<p class=\"more\">… and {len(swiss_items) - 15} more in sections below.</p>"
-            )
         parts.append("</section>")
 
     by_cat: dict[str, list[Item]] = defaultdict(list)
@@ -83,13 +74,8 @@ def render_html(
             continue
         parts.append(f"<section class=\"category cat-{html.escape(cat)}\">")
         parts.append(f"<h2>{html.escape(CATEGORY_LABELS[cat])}</h2>")
-        for topic in TOPIC_ORDER:
-            topic_items = [it for it in cat_items if topic in it.topics]
-            if not topic_items:
-                continue
-            parts.append(f"<h3>{html.escape(TOPIC_LABELS[topic])}</h3>")
-            for it in _sort_for_section(topic_items, by_id):
-                parts.append(_render_item_html(it, by_id))
+        for it in _sort_for_section(cat_items, by_id):
+            parts.append(_render_item_html(it, by_id))
         parts.append("</section>")
 
     if not items:
@@ -231,24 +217,48 @@ def _render_item_html(it: Item, by_id: dict[str, Source]) -> str:
     )
 
     tags: list[str] = []
-    if it.swiss_rationale:
-        tags.append(
-            f"<span class=\"tag-seco\">🇨🇭 {html.escape(it.swiss_rationale)}</span>"
-        )
-    elif it.swiss_relevance and "sanctions" in it.topics:
-        tags.append("<span class=\"tag-seco\">SECO alignment likely</span>")
+    if it.swiss_relevance:
+        if it.swiss_rationale:
+            tags.append(
+                f"<span class=\"tag-seco\">🇨🇭 {html.escape(it.swiss_rationale)}</span>"
+            )
+        elif "sanctions" in it.topics:
+            tags.append("<span class=\"tag-seco\">🇨🇭 SECO alignment likely</span>")
+        else:
+            tags.append("<span class=\"tag-seco\">🇨🇭 Swiss-relevant</span>")
+    topic_chips = " ".join(
+        f"<span class=\"topic\">{html.escape(TOPIC_TAG_LABELS[t])}</span>"
+        for t in TOPIC_ORDER
+        if t in it.topics
+    )
+    if topic_chips:
+        tags.append(topic_chips)
     if it.regions:
         tags.append("regions: " + html.escape(", ".join(it.regions)))
     tags_html = (
         f"<div class=\"tags\">{' · '.join(tags)}</div>" if tags else ""
     )
 
+    peers_html = ""
+    if it.cluster_peers:
+        peer_links = []
+        for peer in it.cluster_peers:
+            peer_src = by_id.get(peer.get("source", ""))
+            peer_name = peer_src.name if peer_src else peer.get("source", "")
+            peer_url = html.escape(peer.get("url", ""), quote=True)
+            peer_links.append(
+                f"<a href=\"{peer_url}\">{html.escape(peer_name)}</a>"
+            )
+        peers_html = (
+            f"<div class=\"also-covered\">also covered: {', '.join(peer_links)}</div>"
+        )
+
     return (
         "<article>"
         f"<h4><a href=\"{url}\">{title}</a></h4>"
         f"<div class=\"src\">{html.escape(source_name)}{badge}{lang}{importance}"
         f" · <time datetime=\"{when.isoformat()}\">{_fmt(when)}</time></div>"
-        f"{summary}{tags_html}"
+        f"{summary}{tags_html}{peers_html}"
         "</article>"
     )
 

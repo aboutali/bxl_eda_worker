@@ -102,6 +102,8 @@ class Source:
     title_selector: str = ""
     # Optional friendly badge for digest output.
     badge: str = ""
+    # Optional per-source UA override (e.g. Euractiv 403s the default UA).
+    user_agent: str = ""
 
 
 def load_sources(path: Path = SOURCES_PATH) -> list[Source]:

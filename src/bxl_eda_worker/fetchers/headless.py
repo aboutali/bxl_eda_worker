@@ -36,7 +36,14 @@ class HeadlessUnavailable(RuntimeError):
 
 @contextmanager
 def browser_context() -> Iterator["object"]:
-    """Yield a Playwright BrowserContext. Caller fetches pages via ctx.new_page()."""
+    """Yield a Playwright Browser. Caller obtains a fresh context per source
+    via ctx_factory()/new_context().
+
+    Why a browser, not a context: the Council CDN serves an interstitial /
+    cookie-wall on the *second* navigation within a shared context (its
+    session cookies start gating the response). A fresh context per source
+    sidesteps that cleanly while still amortizing the ~2s browser launch.
+    """
     try:
         from playwright.sync_api import sync_playwright
     except ImportError as exc:
@@ -47,11 +54,9 @@ def browser_context() -> Iterator["object"]:
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        context = browser.new_context(user_agent=USER_AGENT, locale="en-GB")
         try:
-            yield context
+            yield browser
         finally:
-            context.close()
             browser.close()
 
 
@@ -63,16 +68,18 @@ def fetch_headless_html(
 ) -> list[Item]:
     """Render `source.url` in Chromium and extract anchors matching source.selector.
 
-    Pass an existing Playwright context via `context=` to amortize browser
-    startup across multiple sources in one run.
+    Pass an existing Playwright Browser via `context=` to amortize browser
+    startup across multiple sources in one run. A fresh context (and cookie
+    jar) is created per source.
     """
     if context is None:
-        with browser_context() as ctx:
-            return _do_fetch(source, ctx)
+        with browser_context() as browser:
+            return _do_fetch(source, browser)
     return _do_fetch(source, context)
 
 
-def _do_fetch(source: Source, context) -> list[Item]:
+def _do_fetch(source: Source, browser) -> list[Item]:
+    context = browser.new_context(user_agent=USER_AGENT, locale="en-GB")
     page = context.new_page()
     try:
         # Council's calendar page never reaches networkidle (constant analytics
@@ -99,6 +106,7 @@ def _do_fetch(source: Source, context) -> list[Item]:
         return []
     finally:
         page.close()
+        context.close()
 
     selector = source.selector or "h2 a, h3 a, article a"
     return _parse_anchors(html, final_url or source.url, source, selector)

@@ -19,8 +19,14 @@ TIMEOUT = httpx.Timeout(20.0, connect=10.0)
 def fetch_rss(source: Source, *, client: httpx.Client | None = None) -> list[Item]:
     own_client = client is None
     client = client or httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=TIMEOUT)
+    headers: dict[str, str] = {}
+    if source.user_agent:
+        # Per-source UA override (e.g. Cloudflare-fronted feeds 403 the bot UA).
+        headers["User-Agent"] = source.user_agent
+        headers["Accept"] = "application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.8"
+        headers["Accept-Language"] = "en-GB,en;q=0.9"
     try:
-        resp = client.get(source.url, follow_redirects=True)
+        resp = client.get(source.url, follow_redirects=True, headers=headers)
     except httpx.HTTPError as exc:
         log.warning("fetch failed for %s: %s", source.id, exc)
         return []

@@ -37,24 +37,27 @@ weight = 3
 language = "en"
 selector = "a.gsc-excerpt-item__link"
 title_selector = ".gsc-excerpt-item__title"
-badge = "FAC"
+# Note: this listing covers ALL Council press releases; FAC items are then
+# tagged by the keyword classifier (HIGH_FP_KEYWORDS contains "foreign affairs
+# council" / "fac"). Cross-source clustering then merges these with press
+# coverage of the same item.
 
-# council_meetings (FAC calendar) is disabled: the page renders items via
-# deferred XHRs that don't settle within our 30s timeout. Press releases above
-# already carry FAC outcomes; the calendar is "when's the next FAC", which is
-# secondary signal. Re-enable once a faster selector path is found.
-#
-# [[sources]]
-# id = "council_meetings"
-# name = "Council of the EU — Meetings (incl. FAC calendar)"
-# type = "headless_html"
-# url = "https://www.consilium.europa.eu/en/meetings/calendar/"
-# category = "eu_institution"
-# weight = 3
-# language = "en"
-# selector = "a.gsc-excerpt-item__link"
-# title_selector = ".gsc-excerpt-item__title"
-# badge = "FAC"
+# Foreign Affairs Council meetings — past and upcoming. The /en/meetings/fac/
+# page redirects to the calendar with CouncilConfiguration=122512 (the FAC
+# tag id, verified against live DOM). Anchor pattern matches council_press;
+# titles are clean directly from anchor text so no title_selector is needed.
+# Captures FAC dates, agendas and main results that don't always appear on the
+# generic press-releases list.
+[[sources]]
+id = "council_fac"
+name = "Council of the EU — Foreign Affairs Council"
+type = "headless_html"
+url = "https://www.consilium.europa.eu/en/meetings/calendar/?CouncilConfiguration=122512"
+category = "eu_institution"
+weight = 3
+language = "en"
+selector = "a.gsc-excerpt-item__link"
+badge = "FAC"
 
 [[sources]]
 id = "commission_press"
@@ -177,6 +180,21 @@ category = "press_eu"
 weight = 2
 language = "en"
 
+# Euractiv: still 403 after UA bump (Chrome string + Accept headers). Cloudflare
+# bot-fight rule needs JS challenge solving — would require Playwright. Not
+# worth the cost given Politico EU + EUobserver cover the same beat. Leaving
+# disabled; the per-source `user_agent` field is in place for future feeds.
+#
+# [[sources]]
+# id = "euractiv_global"
+# name = "Euractiv — Global Europe"
+# type = "rss"
+# url = "https://www.euractiv.com/sections/global-europe/feed/"
+# category = "press_eu"
+# weight = 2
+# language = "en"
+# user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+
 # ─────────────────────────────────────────────────────────────────────────────
 # PRESS — Swiss
 # These catch SECO / Bundesrat / EDA coverage from a different angle than
@@ -249,32 +267,24 @@ language = "en"
 # ─────────────────────────────────────────────────────────────────────────────
 # DISABLED — Swiss official sites (admin.ch / SECO / EDA)
 # ─────────────────────────────────────────────────────────────────────────────
-# Federal admin sites use a JS-hydrated CMS where the press release listing
-# anchors do not appear in the rendered DOM even after networkidle + scroll.
-# The release titles probably load via a deferred API call that fires only on
-# user interaction. Selector reverse-engineering is needed; tracking as a
-# follow-up. Meanwhile NZZ / Tagi / SRF cover the same announcements.
-#
-# When you have working selectors, uncomment and add them here. Pattern:
-#
-# [[sources]]
-# id = "seco_news"
-# name = "SECO — Press Releases"
-# type = "headless_html"
-# url = "https://www.seco.admin.ch/seco/de/home/seco/nsb-news/medienmitteilungen-2026.html"
-# category = "swiss_official"
-# weight = 3
-# language = "de"
-# selector = "<TBD>"
-# title_selector = "<TBD>"
-# badge = "🇨🇭 SECO"
-#
-# [[sources]]
-# id = "eda_news"
-# name = "EDA/FDFA — News & Media Releases"
-# ...
+# Federal admin sites use a JS-hydrated CMS. RSS attempts:
+#   - https://www.admin.ch/gov/en/start/documentation/media-releases.rss.html
+#     → 404 (URL pattern guess based on admin.ch conventions; not real).
+#   - https://www.eda.admin.ch/eda/en/home/news/news.rss.html
+#     → 302 to home page (wrong URL).
+#   - https://www.seco.admin.ch/seco/en/home/seco/nsb-news.rss.html
+#     → 200 but feedparser sees 0 items (response is HTML, not feed).
+# To enable: open each ministry's news page in a browser, look for the RSS
+# autodiscovery <link rel="alternate" type="application/rss+xml"> in <head>,
+# paste the real href below. NZZ / Tagi / SRF cover the same announcements
+# from a different angle in the meantime, so this is not blocking.
 #
 # [[sources]]
 # id = "admin_press"
-# name = "Federal Council — Press Releases"
-# ...
+# name = "Federal Council — Media Releases"
+# type = "rss"
+# url = "<TBD — see note above>"
+# category = "swiss_official"
+# weight = 3
+# language = "en"
+# badge = "🇨🇭 Bundesrat"

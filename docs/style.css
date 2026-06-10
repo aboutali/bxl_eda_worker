@@ -224,6 +224,11 @@ footer {
   line-height: 1.5;
 }
 footer a { color: var(--muted); }
+.made {
+  margin-top: .6rem;
+  color: var(--swiss);
+  letter-spacing: .02em;
+}
 
 ul.archive-list {
   list-style: none;

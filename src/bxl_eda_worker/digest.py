@@ -87,6 +87,8 @@ def render(
     lines.append("---")
     polled = ", ".join(s.name for s in sources)
     lines.append(f"_Sources polled: {polled}._")
+    lines.append("")
+    lines.append("_Made with <3 for SER._")
     return "\n".join(lines)
 
 

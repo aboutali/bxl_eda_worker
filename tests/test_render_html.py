@@ -166,3 +166,10 @@ def test_html_swiss_item_without_rationale_still_marked():
                    topics=["foreign_policy"], swiss_relevance=True)]
     out = render_html(items, sources, **_win())
     assert "🇨🇭 Swiss-relevant" in out
+
+
+def test_html_footer_has_made_with_tagline():
+    sources = [_src("s", "eu_institution")]
+    items = [_item("https://t/1", "s", "eu_institution", "X")]
+    out = render_html(items, sources, **_win())
+    assert "Made with &lt;3 for SER" in out  # < is escaped in HTML

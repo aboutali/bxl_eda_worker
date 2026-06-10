@@ -171,3 +171,10 @@ def test_importance_stars_render_for_high_items_only():
     out = render(items, sources, window_start=_now() - timedelta(hours=24), window_end=_now())
     assert "★5" in out
     assert "★2" not in out  # importance < 4 → no star marker
+
+
+def test_footer_has_made_with_tagline():
+    sources = [_src("eeas", "eu_institution")]
+    items = [_item("https://t/1", "eeas", "eu_institution", "X", topics=["foreign_policy"])]
+    out = render(items, sources, window_start=_now() - timedelta(hours=24), window_end=_now())
+    assert "Made with <3 for SER" in out

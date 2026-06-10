@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 import httpx
 
 from bxl_eda_worker.analyze import compose_headline, enrich_items
-from bxl_eda_worker.classify import classify, is_relevant
+from bxl_eda_worker.classify import classify, is_multilateral_forum_statement, is_relevant
 from bxl_eda_worker.cluster import cluster_items, is_primary_or_singleton
 from bxl_eda_worker.config import DB_PATH, ensure_dirs, load_sources
 from bxl_eda_worker.digest import render, write_digest
@@ -98,9 +98,14 @@ def run(window_hours: int = 24, *, skip_headless: bool = False) -> None:
         digest_items = items_in_window(conn, window_start, now)
 
         # Cluster cross-source duplicates before rendering. Headline gets only
-        # primaries+singletons so the LLM doesn't see the same story twice.
+        # primaries+singletons, minus EEAS multilateral-forum statements, so the
+        # LLM neither sees the same story twice nor narrates procedural IAEA/OSCE/UN
+        # interventions (those are relegated to a brief aside in the renderers).
         cluster_items(digest_items, sources)
-        primary_items = [it for it in digest_items if is_primary_or_singleton(it)]
+        primary_items = [
+            it for it in digest_items
+            if is_primary_or_singleton(it) and not is_multilateral_forum_statement(it)
+        ]
 
         headline = compose_headline(primary_items)
 

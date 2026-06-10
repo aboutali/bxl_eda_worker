@@ -168,6 +168,23 @@ def test_html_swiss_item_without_rationale_still_marked():
     assert "🇨🇭 Swiss-relevant" in out
 
 
+def test_html_multilateral_forum_statements_go_to_brief_aside():
+    sources = [_src("eeas_press", "eu_institution")]
+    items = [
+        _item("https://e/normal", "eeas_press", "eu_institution",
+              "HR/VP Kallas statement on Ukraine", topics=["foreign_policy"]),
+        _item("https://e/osce", "eeas_press", "eu_institution",
+              "OSCE Permanent Council - EU Statement on Ukraine", topics=["foreign_policy"],
+              summary_oneliner="Routine OSCE statement."),
+    ]
+    out = render_html(items, sources, **_win())
+    assert "forum-aside" in out  # the brief aside section
+    aside_idx = out.index("forum-aside")
+    assert out.index("https://e/osce") > aside_idx
+    assert out.index("https://e/normal") < aside_idx
+    assert "Routine OSCE statement." not in out  # content-less aside
+
+
 def test_html_footer_has_made_with_tagline():
     sources = [_src("s", "eu_institution")]
     items = [_item("https://t/1", "s", "eu_institution", "X")]

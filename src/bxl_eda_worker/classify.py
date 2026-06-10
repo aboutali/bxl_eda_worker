@@ -6,6 +6,7 @@ from functools import lru_cache
 from bxl_eda_worker.config import (
     HIGH_FP_KEYWORDS,
     MIDDLE_EAST_KEYWORDS,
+    MULTILATERAL_FORUM_KEYWORDS,
     SANCTIONS_KEYWORDS,
     SWISS_RELEVANCE_KEYWORDS,
 )
@@ -34,6 +35,20 @@ def classify(item: Item) -> Item:
 
 def is_relevant(item: Item) -> bool:
     return bool(item.topics)
+
+
+def is_multilateral_forum_statement(item: Item) -> bool:
+    """True for EEAS "EU Statement" interventions delivered in non-EU multilateral
+    bodies (IAEA, OSCE, UN…). These are procedural and get relegated to a brief
+    aside rather than the main digest.
+
+    Scoped to EEAS-sourced items on purpose: press coverage that merely *mentions*
+    the IAEA stays relevant, and EU bodies (Foreign Affairs Council, European
+    Council) are not in MULTILATERAL_FORUM_KEYWORDS so they remain in the digest.
+    """
+    if not item.source.startswith("eeas"):
+        return False
+    return _any_match(item.title.lower(), MULTILATERAL_FORUM_KEYWORDS)
 
 
 def _any_match(haystack: str, needles: frozenset[str] | set[str]) -> bool:

@@ -173,6 +173,28 @@ def test_importance_stars_render_for_high_items_only():
     assert "★2" not in out  # importance < 4 → no star marker
 
 
+def test_multilateral_forum_statements_go_to_brief_aside():
+    sources = [_src("eeas_press", "eu_institution")]
+    items = [
+        _item("https://e/normal", "eeas_press", "eu_institution",
+              "HR/VP Kallas statement on Ukraine", topics=["foreign_policy"],
+              summary_oneliner="A normal EEAS foreign-policy item."),
+        _item("https://e/iaea", "eeas_press", "eu_institution",
+              "EU Statement - Board of Governors International Atomic Energy Agency (IAEA)",
+              topics=["middle_east"], summary_oneliner="Routine IAEA statement text."),
+    ]
+    out = render(items, sources, window_start=_now() - timedelta(hours=24), window_end=_now())
+    assert "Multilateral-forum statements" in out
+    aside_idx = out.index("Multilateral-forum statements")
+    # Forum item lives in the aside (after the heading); the normal item in main (before).
+    assert out.index("https://e/iaea") > aside_idx
+    assert out.index("https://e/normal") < aside_idx
+    # The aside is content-less: the forum item's one-liner is NOT rendered.
+    assert "Routine IAEA statement text." not in out
+    # The normal item keeps its one-liner in the main body.
+    assert "A normal EEAS foreign-policy item." in out
+
+
 def test_footer_has_made_with_tagline():
     sources = [_src("eeas", "eu_institution")]
     items = [_item("https://t/1", "eeas", "eu_institution", "X", topics=["foreign_policy"])]

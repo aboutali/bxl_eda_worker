@@ -4,6 +4,7 @@ from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
+from bxl_eda_worker.classify import is_multilateral_forum_statement
 from bxl_eda_worker.config import DIGEST_DIR, Source
 from bxl_eda_worker.models import Item
 
@@ -44,6 +45,10 @@ def render(
     by_id = {s.id: s for s in sources}
     n_collapsed = sum(1 for it in items if it.cluster_role == "secondary")
     items = [it for it in _dedupe_by_title(items) if it.cluster_role != "secondary"]
+    # Relegate EEAS procedural statements in non-EU bodies (IAEA/OSCE/UN) to a
+    # brief, content-less aside; keep them out of the main counts and sections.
+    forum_items = [it for it in items if is_multilateral_forum_statement(it)]
+    items = [it for it in items if not is_multilateral_forum_statement(it)]
     counts = {t: sum(1 for it in items if t in it.topics) for t in TOPIC_ORDER}
     n_swiss = sum(1 for it in items if it.swiss_relevance)
 
@@ -80,7 +85,19 @@ def render(
             lines.extend(_render_item(it, by_id))
         lines.append("")
 
-    if not items:
+    if forum_items:
+        lines.append("## Multilateral-forum statements")
+        lines.append("")
+        lines.append(
+            "_EEAS interventions in non-EU bodies (IAEA, OSCE, UN). "
+            "Listed for completeness — not the EU foreign-policy focus._"
+        )
+        lines.append("")
+        for it in _sort_for_section(forum_items, by_id):
+            lines.append(f"- [{it.title}]({it.url})")
+        lines.append("")
+
+    if not items and not forum_items:
         lines.append("_No relevant items in this window._")
         lines.append("")
 

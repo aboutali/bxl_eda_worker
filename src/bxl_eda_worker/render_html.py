@@ -6,6 +6,7 @@ from collections import defaultdict
 from datetime import date, datetime
 from pathlib import Path
 
+from bxl_eda_worker.classify import is_multilateral_forum_statement
 from bxl_eda_worker.config import REPO_ROOT, Source
 from bxl_eda_worker.digest import (
     CATEGORY_LABELS,
@@ -32,6 +33,10 @@ def render_html(
     by_id = {s.id: s for s in sources}
     n_collapsed = sum(1 for it in items if it.cluster_role == "secondary")
     items = [it for it in _dedupe_by_title(items) if it.cluster_role != "secondary"]
+    # Relegate EEAS procedural statements in non-EU bodies (IAEA/OSCE/UN) to a
+    # brief, content-less aside; keep them out of the main counts and sections.
+    forum_items = [it for it in items if is_multilateral_forum_statement(it)]
+    items = [it for it in items if not is_multilateral_forum_statement(it)]
     counts = {t: sum(1 for it in items if t in it.topics) for t in TOPIC_ORDER}
     n_swiss = sum(1 for it in items if it.swiss_relevance)
 
@@ -78,7 +83,24 @@ def render_html(
             parts.append(_render_item_html(it, by_id))
         parts.append("</section>")
 
-    if not items:
+    if forum_items:
+        parts.append("<section class=\"forum-aside\">")
+        parts.append("<h2>Multilateral-forum statements</h2>")
+        parts.append(
+            "<p class=\"forum-note\">EEAS interventions in non-EU bodies "
+            "(IAEA, OSCE, UN) — listed for completeness, not the EU "
+            "foreign-policy focus.</p>"
+        )
+        parts.append("<ul class=\"forum-list\">")
+        for it in _sort_for_section(forum_items, by_id):
+            parts.append(
+                f"<li><a href=\"{html.escape(it.url, quote=True)}\">"
+                f"{html.escape(it.title)}</a></li>"
+            )
+        parts.append("</ul>")
+        parts.append("</section>")
+
+    if not items and not forum_items:
         parts.append("<p class=\"empty\">No relevant items in this window.</p>")
 
     parts.append("</main>")

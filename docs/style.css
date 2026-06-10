@@ -230,6 +230,32 @@ footer a { color: var(--muted); }
   letter-spacing: .02em;
 }
 
+.forum-aside {
+  margin-top: 2.5rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--border);
+}
+.forum-aside h2 {
+  font-size: 1rem;
+  color: var(--muted);
+  border-bottom: none;
+}
+.forum-note {
+  color: var(--muted);
+  font-size: .82rem;
+  margin: .25rem 0 .6rem;
+}
+.forum-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.forum-list li {
+  padding: .15rem 0;
+  font-size: .85rem;
+}
+.forum-list a { color: var(--muted); }
+
 ul.archive-list {
   list-style: none;
   padding: 0;

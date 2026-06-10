@@ -85,6 +85,24 @@ SWISS_RELEVANCE_KEYWORDS = {
     "embargogesetz",
 }
 
+# Non-EU multilateral bodies. EEAS routinely delivers procedural "EU Statement"
+# interventions in these forums (IAEA Board of Governors, OSCE Permanent Council,
+# UN Security Council/General Assembly, …). They flood the EEAS feed and are not
+# the EU-foreign-policy focus, so classify.is_multilateral_forum_statement uses
+# this set to relegate them to a brief aside. EU bodies — Foreign Affairs Council,
+# European Council — are deliberately absent here and stay in the main digest.
+MULTILATERAL_FORUM_KEYWORDS = {
+    "iaea", "international atomic energy agency", "board of governors",
+    "osce", "permanent council",
+    "organization for security", "organisation for security",
+    "un security council", "security council", "unsc",
+    "un general assembly", "general assembly", "unga",
+    "human rights council", "unhrc",
+    "opcw", "conference on disarmament",
+    "npt safeguards",
+    "third committee", "first committee",
+}
+
 
 @dataclass(frozen=True)
 class Source:

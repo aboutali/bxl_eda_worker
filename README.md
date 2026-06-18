@@ -18,7 +18,7 @@ pip install -e .
 pip install -e ".[headless]"
 playwright install chromium   # ~110 MB
 
-# Optional: LLM enrichment (per-item Opus 4.7 summary/classification
+# Optional: LLM enrichment (per-item Opus 4.8 summary/classification
 # + a daily synthesis headline at the top of the digest).
 pip install -e ".[llm]"
 $env:ANTHROPIC_API_KEY = "sk-ant-..."   # or `setx` to persist
@@ -47,7 +47,7 @@ $env:ANTHROPIC_API_KEY = "sk-ant-..."
 python -m bxl_eda_worker seed-archive
 ```
 
-This calls Opus 4.7 once per week (~17 weeks × 2 calls ≈ $3–4 one-time) to invent ~15 plausible items + a synthesis headline per week, and writes each as `docs/archive/2026-WXX.html`. Idempotent — already-seeded weeks are skipped (use `--force` to regenerate). Each generated page carries a "Simulated weekly digest" disclaimer in its body. The SQLite dedup store is **not** touched, so the daily cron stays clean.
+This calls Opus 4.8 once per week (~17 weeks × 2 calls ≈ $3–4 one-time) to invent ~15 plausible items + a synthesis headline per week, and writes each as `docs/archive/2026-WXX.html`. Idempotent — already-seeded weeks are skipped (use `--force` to regenerate). Each generated page carries a "Simulated weekly digest" disclaimer in its body. The SQLite dedup store is **not** touched, so the daily cron stays clean.
 
 ## Schedule it (Windows Task Scheduler)
 

@@ -19,11 +19,11 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-# Defaults to Opus 4.7 per skill guidance (most capable; user can override).
-MODEL = os.getenv("BXL_LLM_MODEL", "claude-opus-4-7")
+# Defaults to Opus 4.8 per skill guidance (most capable; user can override).
+MODEL = os.getenv("BXL_LLM_MODEL", "claude-opus-4-8")
 
 # Cap headline output; full thinking is allowed via adaptive thinking + max_tokens
-# headroom — Opus 4.7 truncates output at high effort with low max_tokens.
+# headroom — Opus truncates output at high effort with low max_tokens.
 HEADLINE_MAX_TOKENS = 4096
 ITEM_MAX_TOKENS = 1024
 

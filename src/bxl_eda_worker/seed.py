@@ -1,6 +1,6 @@
 """One-shot backfill that invents a fictitious weekly archive for 2026-W01..
 
-Calls Opus 4.7 once per week to generate ~15 plausible items and a synthesis
+Calls Opus 4.8 once per week to generate ~15 plausible items and a synthesis
 headline, then writes each as docs/archive/2026-WXX.html. Idempotent — weeks
 that already have a file are skipped. Does NOT touch the SQLite store, so the
 daily cron's dedup window stays clean.
@@ -27,7 +27,7 @@ from bxl_eda_worker.render_html import (
 
 log = logging.getLogger(__name__)
 
-MODEL = os.getenv("BXL_LLM_MODEL", "claude-opus-4-7")
+MODEL = os.getenv("BXL_LLM_MODEL", "claude-opus-4-8")
 WEEK_ITEMS_MAX_TOKENS = 8000
 WEEK_HEADLINE_MAX_TOKENS = 4096
 

@@ -2,8 +2,12 @@ name: daily-digest
 
 on:
   schedule:
-    # 06:00 UTC every day = 07:00 CET / 08:00 CEST
-    - cron: "0 6 * * *"
+    # 04:37 UTC every day = 05:37 CET / 06:37 CEST. Deliberately earlier than
+    # 06:00 and off the top of the hour: GitHub queues scheduled runs on shared
+    # runners and the congested ":00" slots were delaying us 2.5-5h (commits
+    # landing ~09:00-11:00 UTC). An odd minute dodges the worst of that queue.
+    # Cron is still only the *earliest* fire time, never a guarantee.
+    - cron: "37 4 * * *"
   workflow_dispatch:  # allow manual trigger from Actions tab
 
 permissions:

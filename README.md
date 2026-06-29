@@ -68,7 +68,7 @@ Each run also writes a static HTML site to `docs/`:
 - `docs/archive/index.html` — auto-generated table of contents
 - `docs/style.css` — minimal stylesheet (light + dark mode)
 
-A GitHub Actions workflow at `.github/workflows/daily-digest.yml` runs every day at **06:00 UTC**, regenerates the digest in CI (Playwright Chromium included), and commits `docs/` back to `main`. To activate hosting:
+A GitHub Actions workflow at `.github/workflows/daily-digest.yml` is scheduled every day at **04:37 UTC** (an odd, off-the-hour minute — scheduled runs queue on shared runners and the `:00` slots were delaying actual runs by hours), regenerates the digest in CI (Playwright Chromium included), and commits `docs/` back to `main`. The cron time is the earliest the run can fire, not a guarantee. To activate hosting:
 
 1. **Make the repo public** (or upgrade to GitHub Pro — Pages on private repos requires a paid plan).
 2. **Enable Pages**: repo Settings → Pages → Source: *Deploy from a branch* → Branch: `main`, Folder: `/docs` → Save.

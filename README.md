@@ -2,7 +2,7 @@
 
 Daily digest of EU foreign-policy, Middle East and sanctions developments out of Brussels — built for a Swiss-confederation reader (SECO/EDA lens).
 
-Polls primary EU sources (EEAS, Council of the EU via headless browser, European Commission, Parliament committees AFET/SEDE/DROI/INTA), Brussels press (Politico, EUobserver), Swiss press (NZZ, Tages-Anzeiger, SRF), French international press (Le Monde Diplomatique), and EU think tanks (ECFR, Bruegel). Filters by topic (sanctions / Middle East / high-level FP), flags items with likely SECO-alignment relevance, and writes a markdown digest under `digests/YYYY-MM-DD.md`.
+Polls primary EU sources (EEAS, Council of the EU press releases + Foreign Affairs Council calendar via headless browser, European Commission, Parliament committees AFET/SEDE/DROI/INTA/DEVE and delegations DPAL/DMAS/DMAG/DMED), Brussels press (Politico, EUobserver), Swiss press (NZZ, Tages-Anzeiger, SRF, Le Temps, Aargauer Zeitung), international press (Le Monde Diplomatique, Financial Times, Deutsche Welle), and think tanks (ECFR, Bruegel, International Crisis Group). Filters by topic (sanctions / Middle East / high-level FP), flags items with likely SECO-alignment relevance, and writes a markdown digest under `digests/YYYY-MM-DD.md`.
 
 ## Setup
 
@@ -85,12 +85,12 @@ Each source carries a `category` that drives digest grouping:
 
 | Category | Sources |
 |---|---|
-| 🇪🇺 EU institutions | EEAS, Council of the EU (headless), Commission, Parliament (AFET, SEDE, DROI, INTA) |
+| 🇪🇺 EU institutions | EEAS, Council of the EU (press releases + FAC meetings calendar, both headless), Commission, Parliament committees (AFET, SEDE, DROI, INTA, DEVE) and delegations (DPAL Palestine, DMAS Mashreq, DMAG Maghreb, DMED Union for the Mediterranean) |
 | 🇨🇭 Swiss confederation | *currently empty — see "What's not yet wired up" below* |
 | Brussels press | Politico Europe, EUobserver |
-| Swiss press | NZZ International, Tages-Anzeiger, SRF |
-| International press | Le Monde Diplomatique |
-| Think tanks | ECFR, Bruegel |
+| Swiss press | NZZ International, Tages-Anzeiger, SRF International, Le Temps, Aargauer Zeitung International |
+| International press | Le Monde Diplomatique, Financial Times World, Deutsche Welle World |
+| Think tanks | ECFR, Bruegel, International Crisis Group |
 
 The 🇨🇭 Swiss-relevance highlights section at the top of each digest pulls items from any category that mention Switzerland/SECO/EDA/neutrality, plus any sanctions item (since SECO routinely decides on alignment).
 
@@ -105,9 +105,10 @@ Edit `sources.toml`. Each entry needs `id`, `name`, `type`, `url`, `category`, p
 
 ## What's not yet wired up (be honest)
 
-- **Swiss federal sites** (admin.ch, SECO, EDA): JS-hydrated CMS where the press release listing anchors don't appear in the rendered DOM even after `networkidle` + scroll. Probably a deferred API call triggered by user interaction. Selector reverse-engineering needed. Meanwhile NZZ/Tagi/SRF cover the same announcements with a journalistic angle.
-- **Council meetings calendar (FAC dates)**: the page never reaches `networkidle` (constant analytics XHRs) and our `wait_for_selector` poll didn't surface items in 15s. Press releases above carry FAC *outcomes*, which is the higher-signal information; the *when* of the next FAC is secondary. Disabled with a note in `sources.toml`.
-- **Euractiv**: bot-blocked (HTTP 403). Could be added as a headless source later.
+- **Swiss federal sites** (admin.ch, SECO, EDA): JS-hydrated CMS where the press release listing anchors don't appear in the rendered DOM even after `networkidle` + scroll. Probably a deferred API call triggered by user interaction. Selector reverse-engineering needed. Meanwhile NZZ/Tagi/SRF/Le Temps cover the same announcements with a journalistic angle.
+- **Euractiv**: still HTTP 403 even after a browser UA bump — Cloudflare bot-fight rule needs JS challenge solving (i.e. Playwright). Not worth the cost given Politico EU + EUobserver cover the same beat; disabled with a note in `sources.toml`.
+- **swissinfo.ch (SWI)**: the relaunched site dropped its news RSS (the old `/eng/services/rss` now 410s and the page head exposes no feed autodiscovery link, only a podcast). Would need `headless_html` scraping; NZZ/Tagi/SRF/Le Temps cover the same ground meanwhile.
+- **Carnegie Europe**: the carnegieendowment.org relaunch serves a JS-rendered SPA for every `/rss` path — no static RSS endpoint found. Would need headless rendering; ECFR/Bruegel cover the EU-FP angle.
 - **EUR-Lex CFSP feed**: their RSS endpoints return interactive HTML pages; would need scraping.
 - **Classifier is keyword-based, not semantic.** Word-bounded matching avoids the obvious false positives ("Romanian" doesn't match "Oman"). Tune keyword sets in `src/bxl_eda_worker/config.py`.
 - **Politico RSS** gives headlines + short excerpts only; full text is paywalled.

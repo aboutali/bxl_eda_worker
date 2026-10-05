@@ -13,7 +13,7 @@ Daily digest of EU foreign-policy, Middle East and sanctions developments out of
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -e ".[dev,headless,llm]"
-playwright install chromium     # ~110 MB; needed for the Council source
+playwright install chromium     # ~110 MB; only needed for headless_html sources (none enabled)
 
 # Run the worker
 python -m bxl_eda_worker run                   # default 24h window
@@ -81,4 +81,4 @@ The 🇨🇭 highlights section pulls from any item with `swiss_relevance=True`,
 - **LLM enrichment is best-effort.** Missing `ANTHROPIC_API_KEY` or `anthropic` SDK → keyword classifier alone, no headline. The site still builds.
 - **GitHub Actions** (`.github/workflows/daily-digest.yml`) is scheduled at 04:37 UTC (an odd, off-the-hour minute — GitHub's congested `:00` queue was delaying actual runs by 2.5-5h), caches both `data/` (so each run is a true 24h delta) and `~/.cache/ms-playwright` (so Chromium isn't re-downloaded), then commits regenerated `docs/` back to `main`. The bot commit is created by `github-actions[bot]`; do not amend or rewrite those commits during normal local work.
 - **`seed-archive` is a separate one-shot backfill,** not part of the daily run. `seed.py` invents 13–17 plausible items + a synthesis headline per week (one Opus call each, 2026-W01 onward) and writes `docs/archive/2026-WXX.html`, each carrying a "Simulated weekly digest" disclaimer banner. It deliberately does **not** touch `data/items.sqlite`, so the daily dedup window stays clean. Idempotent — existing weeks are skipped (`--force` to regenerate). Triggered manually via the `seed-archive.yml` workflow (`workflow_dispatch` only).
-- **What's deliberately not wired up** (per README and the commented-out entries in `sources.toml`): admin.ch / SECO / EDA official sites (JS-hydrated, selectors not yet reverse-engineered), Euractiv (Cloudflare 403 even with a browser UA), swissinfo.ch (relaunched site dropped its news RSS), Carnegie Europe (JS-rendered SPA, no static RSS). Don't add these without a working selector / fetch path. (The Council FAC meetings calendar *is* wired up now, as the `council_fac` headless source.)
+- **What's deliberately not wired up** (per README and the commented-out entries in `sources.toml`): admin.ch / SECO / EDA official sites (JS-hydrated, selectors not yet reverse-engineered), Euractiv (Cloudflare 403 even with a browser UA), swissinfo.ch (relaunched site dropped its news RSS), Carnegie Europe (JS-rendered SPA, no static RSS). Don't add these without a working selector / fetch path. The Council FAC meetings calendar (`council_fac`) is disabled too: Cloudflare challenges headless Chromium and no RSS exists. Council press releases come from the official RSS (`pressreleases.ashx`).

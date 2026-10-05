@@ -69,7 +69,12 @@ def _parse_date(entry) -> datetime | None:
         try:
             dt = parsedate_to_datetime(raw)
         except (TypeError, ValueError):
-            continue
+            # Not RFC 2822 (e.g. ISO 8601 in Atom <updated>, as the Council
+            # feed sends); fall back to feedparser's own UTC parse.
+            parsed = getattr(entry, f"{attr}_parsed", None)
+            if not parsed:
+                continue
+            dt = datetime(*parsed[:6], tzinfo=timezone.utc)
         if dt is None:
             continue
         if dt.tzinfo is None:

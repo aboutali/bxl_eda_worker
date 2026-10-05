@@ -81,7 +81,7 @@ def _parse_date(entry) -> datetime | None:
 def _clean_summary(html: str) -> str:
     if not html:
         return ""
-    from selectolax.parser import HTMLParser
+    from selectolax.lexbor import LexborHTMLParser
 
-    text = HTMLParser(html).text(separator=" ").strip()
+    text = LexborHTMLParser(html).text(separator=" ").strip()
     return " ".join(text.split())[:600]

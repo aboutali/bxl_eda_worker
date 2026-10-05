@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from urllib.parse import urljoin
 
 import httpx
-from selectolax.parser import HTMLParser
+from selectolax.lexbor import LexborHTMLParser
 
 from bxl_eda_worker.config import Source
 from bxl_eda_worker.models import Item
@@ -41,7 +41,7 @@ def fetch_eeas_html(source: Source, *, client: httpx.Client | None = None) -> li
 
 
 def _parse_anchors(html: str, base_url: str, source: Source, selector: str) -> list[Item]:
-    tree = HTMLParser(html)
+    tree = LexborHTMLParser(html)
     now = datetime.now(timezone.utc)
     items: list[Item] = []
     seen: set[str] = set()

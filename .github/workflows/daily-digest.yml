@@ -42,7 +42,11 @@ jobs:
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[headless,llm]"
+          pip install -e ".[dev,headless,llm]"
+
+      # Fail fast: a broken import or parser stops the job before the worker runs.
+      - name: Run tests
+        run: python -m pytest tests/ -q
 
       # Pin the Playwright browser cache to the installed Playwright version.
       # An unversioned key let an old chromium binary survive a Playwright

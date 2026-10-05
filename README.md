@@ -2,7 +2,7 @@
 
 Daily digest of EU foreign-policy, Middle East and sanctions developments out of Brussels — built for a Swiss-confederation reader (SECO/EDA lens).
 
-Polls primary EU sources (EEAS, Council of the EU press releases + Foreign Affairs Council calendar via headless browser, European Commission, Parliament committees AFET/SEDE/DROI/INTA/DEVE and delegations DPAL/DMAS/DMAG/DMED), Brussels press (Politico, EUobserver), Swiss press (NZZ, Tages-Anzeiger, SRF, Le Temps, Aargauer Zeitung), international press (Le Monde Diplomatique, Financial Times, Deutsche Welle), and think tanks (ECFR, Bruegel, International Crisis Group). Filters by topic (sanctions / Middle East / high-level FP), flags items with likely SECO-alignment relevance, and writes a markdown digest under `digests/YYYY-MM-DD.md`.
+Polls primary EU sources (EEAS, Council of the EU press releases via official RSS, European Commission, Parliament committees AFET/SEDE/DROI/INTA/DEVE and delegations DPAL/DMAS/DMAG/DMED), Brussels press (Politico, EUobserver), Swiss press (NZZ, Tages-Anzeiger, SRF, Le Temps, Aargauer Zeitung), international press (Le Monde Diplomatique, Financial Times, Deutsche Welle), and think tanks (ECFR, Bruegel, International Crisis Group). Filters by topic (sanctions / Middle East / high-level FP), flags items with likely SECO-alignment relevance, and writes a markdown digest under `digests/YYYY-MM-DD.md`.
 
 ## Setup
 
@@ -13,8 +13,7 @@ python -m venv .venv
 # Core install (RSS + EEAS HTML scrape):
 pip install -e .
 
-# Optional: headless browser for Council of the EU (FAC press releases),
-# which sits behind a JS anti-bot interstitial.
+# Optional: headless browser for `headless_html` sources (none enabled by default).
 pip install -e ".[headless]"
 playwright install chromium   # ~110 MB
 
@@ -85,7 +84,7 @@ Each source carries a `category` that drives digest grouping:
 
 | Category | Sources |
 |---|---|
-| 🇪🇺 EU institutions | EEAS, Council of the EU (press releases + FAC meetings calendar, both headless), Commission, Parliament committees (AFET, SEDE, DROI, INTA, DEVE) and delegations (DPAL Palestine, DMAS Mashreq, DMAG Maghreb, DMED Union for the Mediterranean) |
+| 🇪🇺 EU institutions | EEAS, Council of the EU (press releases via RSS), Commission, Parliament committees (AFET, SEDE, DROI, INTA, DEVE) and delegations (DPAL Palestine, DMAS Mashreq, DMAG Maghreb, DMED Union for the Mediterranean) |
 | 🇨🇭 Swiss confederation | *currently empty — see "What's not yet wired up" below* |
 | Brussels press | Politico Europe, EUobserver |
 | Swiss press | NZZ International, Tages-Anzeiger, SRF International, Le Temps, Aargauer Zeitung International |
@@ -109,6 +108,7 @@ Edit `sources.toml`. Each entry needs `id`, `name`, `type`, `url`, `category`, p
 - **Euractiv**: still HTTP 403 even after a browser UA bump — Cloudflare bot-fight rule needs JS challenge solving (i.e. Playwright). Not worth the cost given Politico EU + EUobserver cover the same beat; disabled with a note in `sources.toml`.
 - **swissinfo.ch (SWI)**: the relaunched site dropped its news RSS (the old `/eng/services/rss` now 410s and the page head exposes no feed autodiscovery link, only a podcast). Would need `headless_html` scraping; NZZ/Tagi/SRF/Le Temps cover the same ground meanwhile.
 - **Carnegie Europe**: the carnegieendowment.org relaunch serves a JS-rendered SPA for every `/rss` path — no static RSS endpoint found. Would need headless rendering; ECFR/Bruegel cover the EU-FP angle.
+- **Council FAC meetings calendar**: the calendar page sits behind a Cloudflare JS challenge that headless Chromium does not pass, and no RSS equivalent exists. FAC outcomes still arrive through the Council press-release RSS.
 - **EUR-Lex CFSP feed**: their RSS endpoints return interactive HTML pages; would need scraping.
 - **Classifier is keyword-based, not semantic.** Word-bounded matching avoids the obvious false positives ("Romanian" doesn't match "Oman"). Tune keyword sets in `src/bxl_eda_worker/config.py`.
 - **Politico RSS** gives headlines + short excerpts only; full text is paywalled.

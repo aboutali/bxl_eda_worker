@@ -30,34 +30,35 @@ language = "en"
 [[sources]]
 id = "council_press"
 name = "Council of the EU — Press Releases"
-type = "headless_html"
-url = "https://www.consilium.europa.eu/en/press/press-releases/"
+type = "rss"
+url = "https://www.consilium.europa.eu/en/rss/pressreleases.ashx"
 category = "eu_institution"
 weight = 3
 language = "en"
-selector = "a.gsc-excerpt-item__link"
-title_selector = ".gsc-excerpt-item__title"
-# Note: this listing covers ALL Council press releases; FAC items are then
-# tagged by the keyword classifier (HIGH_FP_KEYWORDS contains "foreign affairs
-# council" / "fac"). Cross-source clustering then merges these with press
-# coverage of the same item.
+# Official RSS of ALL Council press releases (latest 20). The HTML listing
+# (/en/press/press-releases/) now sits behind a Cloudflare JS challenge that
+# headless Chromium never passes ("Just a moment...", HTTP 403), so the old
+# headless_html source fetched 0 items every run; this .ashx endpoint is
+# not challenged. FAC items are tagged by the keyword classifier
+# (HIGH_FP_KEYWORDS contains "foreign affairs council" / "fac"); the feed
+# also carries FAC media advisories, "main results" and the bi-weekly
+# "Forward look". Cross-source clustering merges these with press coverage.
 
-# Foreign Affairs Council meetings — past and upcoming. The /en/meetings/fac/
-# page redirects to the calendar with CouncilConfiguration=122512 (the FAC
-# tag id, verified against live DOM). Anchor pattern matches council_press;
-# titles are clean directly from anchor text so no title_selector is needed.
-# Captures FAC dates, agendas and main results that don't always appear on the
-# generic press-releases list.
-[[sources]]
-id = "council_fac"
-name = "Council of the EU — Foreign Affairs Council"
-type = "headless_html"
-url = "https://www.consilium.europa.eu/en/meetings/calendar/?CouncilConfiguration=122512"
-category = "eu_institution"
-weight = 3
-language = "en"
-selector = "a.gsc-excerpt-item__link"
-badge = "FAC"
+# Foreign Affairs Council meetings calendar — disabled. The calendar page
+# (/en/meetings/calendar/?CouncilConfiguration=122512) hits the same
+# Cloudflare challenge and has no RSS equivalent (every /en/rss/*.ashx
+# guess besides pressreleases.ashx 403s or 404s). FAC outcomes still arrive
+# through council_press above.
+# [[sources]]
+# id = "council_fac"
+# name = "Council of the EU — Foreign Affairs Council"
+# type = "headless_html"
+# url = "https://www.consilium.europa.eu/en/meetings/calendar/?CouncilConfiguration=122512"
+# category = "eu_institution"
+# weight = 3
+# language = "en"
+# selector = "a.gsc-excerpt-item__link"
+# badge = "FAC"
 
 [[sources]]
 id = "commission_press"

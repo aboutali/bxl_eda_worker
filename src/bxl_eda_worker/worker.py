@@ -33,6 +33,7 @@ from bxl_eda_worker.storage import (
     upsert_events,
     upsert_items,
 )
+from bxl_eda_worker.sanctions import write_sanctions_page
 from bxl_eda_worker.weekly import write_weekly
 
 log = logging.getLogger(__name__)
@@ -139,6 +140,9 @@ def run(window_hours: int = 24, *, skip_headless: bool = False) -> None:
         )
         index_path, archive_path = write_html_outputs(html_doc, date=now)
         write_weekly(conn, sources, today)
+        write_sanctions_page(
+            items_in_window(conn, now - timedelta(days=RETENTION_DAYS), now), now,
+        )
         archive_idx = refresh_archive_index()
         log.info("wrote html %s + %s + %s", index_path, archive_path, archive_idx)
     finally:

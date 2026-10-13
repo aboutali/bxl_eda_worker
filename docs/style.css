@@ -416,3 +416,38 @@ ul.search-results a.day {
   margin-right: .4rem;
 }
 ul.search-results .summary { margin: .3rem 0 0; font-size: .88rem; }
+
+/* Sanctions tracker table. */
+.note { color: var(--muted); font-size: .85rem; }
+.table-wrap { overflow-x: auto; }
+table.sanctions {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .86rem;
+}
+table.sanctions th, table.sanctions td {
+  text-align: left;
+  vertical-align: top;
+  padding: .5rem .5rem .5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+table.sanctions th {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+table.sanctions td:first-child, table.sanctions td:nth-child(4) {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+table.sanctions a { color: var(--fg); text-decoration: none; border-bottom: 1px solid var(--accent); }
+@media (max-width: 600px) {
+  table.sanctions thead { display: none; }
+  table.sanctions tr { display: block; padding: .6rem 0; border-bottom: 1px solid var(--border); }
+  table.sanctions td { display: inline; border: none; padding: 0 .4rem 0 0; }
+  table.sanctions td:not(:first-child):not(:last-child)::before { content: "· "; color: var(--muted); }
+  table.sanctions td.none { display: none; }
+  table.sanctions td:last-child { display: block; margin-top: .3rem; }
+}

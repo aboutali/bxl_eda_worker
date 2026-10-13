@@ -54,7 +54,7 @@ The worker writes to three locations (relative to repo root):
 8. **Render** markdown (`digest.render` → `write_digest`) **and** HTML (`render_html.render_html` → `write_html_outputs` → `refresh_archive_index`).
 9. **Weekly synthesis** (`weekly.write_weekly`): once per finished ISO week, writes `docs/archive/YYYY-WNN.html` from the stored items with a weekly LLM lede (`compose_headline(weekly=True)`). It replaces a simulated `seed-archive` page of the same week; `seed-archive --force` never overwrites a real week.
 
-Upcoming Council meetings (`events.py`) are parsed from the raw `council_press` fetch *before* the keyword filter ("Media advisory - Foreign Affairs Council of 12 October 2026"), stored in the `events` table and shown as a "Coming up" box by both renderers. `refresh_archive_index` also writes `docs/archive/search-index.json` (daily pages only) for the archive search box.
+Upcoming Council meetings (`events.py`) are parsed from the raw `council_press` fetch *before* the keyword filter ("Media advisory - Foreign Affairs Council of 12 October 2026"), stored in the `events` table and shown as a "Coming up" box by both renderers. `refresh_archive_index` also writes `docs/archive/search-index.json` (daily pages only) for the archive search box. Each run also rewrites `docs/sanctions.html` (`sanctions.py`): Council sanctions decisions of the last 90 days, with regime, measure type and validity read from the press-release titles by rules (no LLM call).
 
 The HTML renderer deliberately reuses `digest.py`'s ordering helpers (`CATEGORY_ORDER`, `TOPIC_ORDER`, `_dedupe_by_title`, `_sort_for_section`) so markdown and HTML outputs stay structurally identical.
 

@@ -30,10 +30,14 @@ FEED_DAYS = 30
 
 # Pages are rendered with links relative to docs/; archive copies live one
 # level down, so _rebase_for_archive rewrites exactly these strings.
-NAV_HTML = '<nav><a href="archive/">Archive →</a> · <a href="feed.xml">RSS</a></nav>'
+NAV_HTML = (
+    '<nav><a href="archive/">Archive →</a> · <a href="sanctions.html">Sanctions tracker</a>'
+    ' · <a href="feed.xml">RSS</a></nav>'
+)
 _ARCHIVE_REBASE = (
     ('href="style.css"', 'href="../style.css"'),
     ('href="feed.xml"', 'href="../feed.xml"'),
+    ('href="sanctions.html"', 'href="../sanctions.html"'),
     ('<a href="archive/">Archive →</a>', '<a href="../">← Latest</a> · <a href="./">Archive</a>'),
 )
 

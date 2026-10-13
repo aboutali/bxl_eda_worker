@@ -27,6 +27,9 @@ from bxl_eda_worker.render_html import (
 
 log = logging.getLogger(__name__)
 
+# Keep in sync with weekly.SIMULATED_MARKER (seed injects this banner below).
+SIMULATED_MARKER = '<aside class="simulated">'
+
 MODEL = os.getenv("BXL_LLM_MODEL", "claude-opus-4-8")
 WEEK_ITEMS_MAX_TOKENS = 8000
 WEEK_HEADLINE_MAX_TOKENS = 4096
@@ -127,6 +130,10 @@ def seed_archive(*, force: bool = False) -> int:
         target = archive_dir / f"{week_label}.html"
         if target.exists() and not force:
             log.info("%s: already exists, skipping", week_label)
+            continue
+        if target.exists() and SIMULATED_MARKER not in target.read_text(encoding="utf-8"):
+            # A real weekly synthesis (weekly.py) is never overwritten by simulation.
+            log.info("%s: real weekly page exists, skipping", week_label)
             continue
 
         log.info("%s: generating items (%s → %s)", week_label, monday, sunday)

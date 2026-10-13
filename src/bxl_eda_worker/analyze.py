@@ -70,6 +70,12 @@ Just facts and connections. Markdown-clean — plain prose, no bullet points, \
 no headings.
 """
 
+SYSTEM_PROMPT_HEADLINE_WEEKLY = (
+    SYSTEM_PROMPT_HEADLINE
+    .replace("daily", "weekly")
+    .replace("what mattered today", "what mattered this week")
+)
+
 
 # ─── Public API ─────────────────────────────────────────────────────────────
 
@@ -107,8 +113,13 @@ def enrich_items(items: list[Item]) -> list[Item]:
     return items
 
 
-def compose_headline(items: list[Item]) -> str:
-    """Return a 3–5 sentence narrative paragraph. Empty string if no LLM."""
+def compose_headline(
+    items: list[Item], *, weekly: bool = False, period_label: str = "the last 24h",
+) -> str:
+    """Return a 3–5 sentence narrative paragraph. Empty string if no LLM.
+
+    `weekly=True` frames the lede as a weekly synthesis over `period_label`.
+    """
     if not items:
         return ""
     client = _client()
@@ -118,7 +129,7 @@ def compose_headline(items: list[Item]) -> str:
     ranked = sorted(
         items,
         key=lambda it: (-(it.importance or 0), -(it.swiss_relevance)),
-    )[:25]
+    )[:40 if weekly else 25]
     if not any(it.summary_oneliner for it in ranked):
         # Nothing useful to summarize — items weren't enriched.
         return ""
@@ -129,7 +140,8 @@ def compose_headline(items: list[Item]) -> str:
         f"{it.summary_oneliner or it.title}"
         for it in ranked
     ]
-    user_message = "Items from the last 24h:\n\n" + "\n".join(prompt_lines)
+    user_message = f"Items from {period_label}:\n\n" + "\n".join(prompt_lines)
+    system = SYSTEM_PROMPT_HEADLINE_WEEKLY if weekly else SYSTEM_PROMPT_HEADLINE
 
     try:
         resp = client.messages.create(
@@ -137,7 +149,7 @@ def compose_headline(items: list[Item]) -> str:
             max_tokens=HEADLINE_MAX_TOKENS,
             thinking={"type": "adaptive"},
             output_config={"effort": "high"},
-            system=SYSTEM_PROMPT_HEADLINE,
+            system=system,
             messages=[{"role": "user", "content": user_message}],
         )
     except Exception as exc:

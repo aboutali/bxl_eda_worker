@@ -52,6 +52,9 @@ The worker writes to three locations (relative to repo root):
 6. **Cluster** cross-source duplicates (`cluster.cluster_items`) — mutates Items in place, marking one primary per story and demoting the rest.
 7. **Compose headline** (`analyze.compose_headline`) over primaries + singletons only (`cluster.is_primary_or_singleton`), *excluding* EEAS multilateral-forum statements (`classify.is_multilateral_forum_statement`) — so the lede neither narrates the same story twice nor dwells on procedural IAEA/OSCE/UN interventions. Single 3-5 sentence narrative paragraph, prepended to the digest.
 8. **Render** markdown (`digest.render` → `write_digest`) **and** HTML (`render_html.render_html` → `write_html_outputs` → `refresh_archive_index`).
+9. **Weekly synthesis** (`weekly.write_weekly`): once per finished ISO week, writes `docs/archive/YYYY-WNN.html` from the stored items with a weekly LLM lede (`compose_headline(weekly=True)`). It replaces a simulated `seed-archive` page of the same week; `seed-archive --force` never overwrites a real week.
+
+Upcoming Council meetings (`events.py`) are parsed from the raw `council_press` fetch *before* the keyword filter ("Media advisory - Foreign Affairs Council of 12 October 2026"), stored in the `events` table and shown as a "Coming up" box by both renderers. `refresh_archive_index` also writes `docs/archive/search-index.json` (daily pages only) for the archive search box.
 
 The HTML renderer deliberately reuses `digest.py`'s ordering helpers (`CATEGORY_ORDER`, `TOPIC_ORDER`, `_dedupe_by_title`, `_sort_for_section`) so markdown and HTML outputs stay structurally identical.
 

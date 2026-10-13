@@ -10,6 +10,7 @@ from bxl_eda_worker.classify import classify, is_multilateral_forum_statement, i
 from bxl_eda_worker.cluster import cluster_items, is_primary_or_singleton
 from bxl_eda_worker.config import DB_PATH, ensure_dirs, load_sources
 from bxl_eda_worker.digest import render, write_digest
+from bxl_eda_worker.events import extract_events
 from bxl_eda_worker.fetchers import (
     HeadlessUnavailable,
     browser_context,
@@ -27,8 +28,12 @@ from bxl_eda_worker.storage import (
     connect,
     items_in_window,
     prune_older_than,
+    prune_past_events,
+    upcoming_events,
+    upsert_events,
     upsert_items,
 )
+from bxl_eda_worker.weekly import write_weekly
 
 log = logging.getLogger(__name__)
 RETENTION_DAYS = 90
@@ -79,6 +84,10 @@ def run(window_hours: int = 24, *, skip_headless: bool = False) -> None:
     elif skip_headless:
         log.info("skipping %d headless sources (--skip-headless)", len(headless_sources))
 
+    # Meeting announcements are mostly filtered out as irrelevant below, so
+    # extract upcoming Council meetings from the raw fetch first.
+    events = extract_events(fresh)
+
     classified = [classify(it) for it in fresh]
     relevant = [it for it in classified if is_relevant(it)]
     log.info("classified %d items, %d relevant after keyword filter", len(classified), len(relevant))
@@ -92,6 +101,12 @@ def run(window_hours: int = 24, *, skip_headless: bool = False) -> None:
         upsert_items(conn, relevant)
         pruned = prune_older_than(conn, RETENTION_DAYS)
         log.info("pruned %d items older than %d days", pruned, RETENTION_DAYS)
+
+        today = datetime.now(timezone.utc).date()
+        upsert_events(conn, events)
+        prune_past_events(conn, today)
+        coming_up = upcoming_events(conn, today)
+        log.info("events: %d parsed this run, %d upcoming", len(events), len(coming_up))
 
         now = datetime.now(timezone.utc)
         window_start = now - timedelta(hours=window_hours)
@@ -112,7 +127,7 @@ def run(window_hours: int = 24, *, skip_headless: bool = False) -> None:
         digest = render(
             digest_items, sources,
             window_start=window_start, window_end=now,
-            headline=headline,
+            headline=headline, events=coming_up,
         )
         md_path = write_digest(digest, date=now)
         log.info("wrote markdown %s (%d items)", md_path, len(digest_items))
@@ -120,9 +135,10 @@ def run(window_hours: int = 24, *, skip_headless: bool = False) -> None:
         html_doc = render_html(
             digest_items, sources,
             window_start=window_start, window_end=now,
-            headline=headline,
+            headline=headline, events=coming_up,
         )
         index_path, archive_path = write_html_outputs(html_doc, date=now)
+        write_weekly(conn, sources, today)
         archive_idx = refresh_archive_index()
         log.info("wrote html %s + %s + %s", index_path, archive_path, archive_idx)
     finally:

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
 
 from bxl_eda_worker.classify import is_multilateral_forum_statement
 from bxl_eda_worker.config import DIGEST_DIR, Source
+from bxl_eda_worker.events import Event
 from bxl_eda_worker.models import Item
 
 CATEGORY_ORDER = (
@@ -41,6 +43,7 @@ def render(
     window_start: datetime,
     window_end: datetime,
     headline: str = "",
+    events: Sequence[Event] = (),
 ) -> str:
     by_id = {s.id: s for s in sources}
     n_collapsed = sum(1 for it in items if it.cluster_role == "secondary")
@@ -69,6 +72,13 @@ def render(
         lines.append("## Today")
         lines.append("")
         lines.append(headline)
+        lines.append("")
+
+    if events:
+        lines.append("## Coming up")
+        lines.append("")
+        for ev in events:
+            lines.append(f"- {ev.when:%a %d %b} — [{ev.name}]({ev.url})")
         lines.append("")
 
     by_cat: dict[str, list[Item]] = defaultdict(list)

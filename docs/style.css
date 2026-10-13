@@ -368,3 +368,51 @@ body { overflow-wrap: break-word; }
     overflow-wrap: anywhere;
   }
 }
+
+/* Upcoming Council meetings, parsed from Council media advisories. */
+section.coming-up {
+  margin: 0 0 1.5rem;
+  font-size: .9rem;
+}
+section.coming-up h2 {
+  font-size: .85rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  border-bottom: none;
+  margin: 0 0 .4rem;
+}
+section.coming-up ul { list-style: none; padding: 0; margin: 0; }
+section.coming-up li { padding: .2rem 0; }
+section.coming-up time {
+  display: inline-block;
+  min-width: 6.5rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+section.coming-up a { color: var(--accent); text-decoration: none; }
+section.coming-up a:hover { text-decoration: underline; }
+
+/* Archive search. */
+input.search {
+  width: 100%;
+  font: inherit;
+  padding: .6rem .8rem;
+  margin: .5rem 0 1rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+}
+input.search:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+ul.search-results { list-style: none; padding: 0; margin: .5rem 0; }
+ul.search-results li { padding: .6rem 0; border-bottom: 1px solid var(--border); }
+ul.search-results a { color: var(--fg); text-decoration: none; border-bottom: 1px solid var(--accent); }
+ul.search-results a.day {
+  color: var(--muted);
+  border-bottom: none;
+  font-size: .8rem;
+  font-variant-numeric: tabular-nums;
+  margin-right: .4rem;
+}
+ul.search-results .summary { margin: .3rem 0 0; font-size: .88rem; }

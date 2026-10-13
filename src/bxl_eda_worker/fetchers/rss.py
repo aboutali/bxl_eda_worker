@@ -37,8 +37,17 @@ def fetch_rss(source: Source, *, client: httpx.Client | None = None) -> list[Ite
     if resp.status_code >= 400:
         log.warning("fetch %s returned %s", source.id, resp.status_code)
         return []
+    if resp.status_code != 200:
+        # e.g. AWS WAF answers bots with 202 + empty body instead of a 4xx.
+        log.warning(
+            "fetch %s returned %s (%s), no feed",
+            source.id, resp.status_code, resp.headers.get("x-amzn-waf-action") or "no body",
+        )
+        return []
 
     parsed = feedparser.parse(resp.content)
+    if not parsed.entries:
+        log.warning("fetch %s returned a feed with no entries", source.id)
     now = datetime.now(timezone.utc)
     items: list[Item] = []
     for entry in parsed.entries:

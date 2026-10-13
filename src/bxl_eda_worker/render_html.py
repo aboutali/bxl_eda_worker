@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import html
+import json
 import re
 from collections import Counter, defaultdict
+from collections.abc import Sequence
 from datetime import date, datetime, timezone
 from email.utils import format_datetime
 from xml.sax.saxutils import escape as xml_escape
@@ -18,6 +20,7 @@ from bxl_eda_worker.digest import (
     _dedupe_by_title,
     _sort_for_section,
 )
+from bxl_eda_worker.events import Event
 from bxl_eda_worker.models import Item
 
 DOCS_DIR = REPO_ROOT / "docs"
@@ -42,6 +45,7 @@ def render_html(
     window_start: datetime,
     window_end: datetime,
     headline: str = "",
+    events: Sequence[Event] = (),
 ) -> str:
     by_id = {s.id: s for s in sources}
     n_collapsed = sum(1 for it in items if it.cluster_role == "secondary")
@@ -81,6 +85,18 @@ def render_html(
         parts.append("<section class=\"headline\">")
         parts.append("<h2>Today</h2>")
         parts.append(f"<p class=\"lede\">{html.escape(headline)}</p>")
+        parts.append("</section>")
+
+    if events:
+        parts.append("<section class=\"coming-up\">")
+        parts.append("<h2>Coming up</h2>")
+        parts.append("<ul>")
+        for ev in events:
+            parts.append(
+                f"<li><time datetime=\"{ev.when.isoformat()}\">{ev.when:%a %d %b}</time> "
+                f"<a href=\"{html.escape(ev.url, quote=True)}\">{html.escape(ev.name)}</a></li>"
+            )
+        parts.append("</ul>")
         parts.append("</section>")
 
     if items:
@@ -148,7 +164,11 @@ def render_archive_index(entries: list[dict]) -> str:
         "<h1>Archive</h1>",
         "<nav><a href=\"../\">← Latest</a></nav>",
         "</header>",
-        "<main><ul class=\"archive-list\">",
+        "<main>",
+        "<input type=\"search\" id=\"q\" class=\"search\" "
+        "placeholder=\"Search all daily digests…\" aria-label=\"Search all daily digests\" hidden>",
+        "<div id=\"results\" aria-live=\"polite\" hidden></div>",
+        "<ul class=\"archive-list\">",
     ]
     for e in entries:
         kind_tag = (
@@ -160,6 +180,7 @@ def render_archive_index(entries: list[dict]) -> str:
             f" <span class=\"meta\">{e['n_items']} items · {e['n_swiss']} Swiss-relevance</span></li>"
         )
     parts.append("</ul></main>")
+    parts.append(f"<script>{_SEARCH_JS}</script>")
     parts.append("</body></html>")
     return "\n".join(parts)
 
@@ -230,7 +251,35 @@ def refresh_archive_index(
     entries.sort(key=lambda e: e["sort_date"], reverse=True)
     out = archive / "index.html"
     out.write_text(render_archive_index(entries), encoding="utf-8")
+    write_search_index(docs_dir)
     write_feed(docs_dir)
+    return out
+
+
+_ARTICLE_RE = re.compile(
+    r'<article[^>]*><h4><a href="([^"]*)">(.*?)</a></h4>.*?'
+    r'(?:<p class="summary">(.*?)</p>)?(?:<div class="tags">|<div class="also-covered">|</article>)',
+    re.S,
+)
+SEARCH_SUMMARY_CHARS = 240
+
+
+def write_search_index(docs_dir: Path = DOCS_DIR) -> Path:
+    """archive/search-index.json: [date, title, url, summary] per daily item, newest first.
+
+    Simulated weekly pages are left out on purpose: they are not real reporting.
+    """
+    rows: list[list[str]] = []
+    for f in sorted((docs_dir / "archive").glob("20??-??-??.html"), key=lambda f: f.stem, reverse=True):
+        for url, title, summary in _ARTICLE_RE.findall(f.read_text(encoding="utf-8")):
+            rows.append([
+                f.stem,
+                html.unescape(title),
+                html.unescape(url),
+                html.unescape(summary or "")[:SEARCH_SUMMARY_CHARS],
+            ])
+    out = docs_dir / "archive" / "search-index.json"
+    out.write_text(json.dumps(rows, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     return out
 
 
@@ -430,4 +479,28 @@ _FILTER_JS = (
     "bar.addEventListener('click',function(e){var b=e.target.closest('button');if(b)apply(b.dataset.filter);});"
     "var saved='all';try{saved=localStorage.getItem('bxl-filter')||'all';}catch(e){}"
     "if(!btns.some(function(b){return b.dataset.filter===saved;}))saved='all';apply(saved);})();"
+)
+
+
+# Archive search: loads search-index.json on first keystroke; all terms must
+# match title+summary (case- and accent-insensitive). Built with textContent only.
+_SEARCH_JS = (
+    "(function(){var q=document.getElementById('q'),out=document.getElementById('results'),"
+    "list=document.querySelector('.archive-list');if(!q)return;q.hidden=false;var idx=null,loading=false;"
+    "function fold(s){return s.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');}"
+    "function run(){var terms=fold(q.value).split(/\\s+/).filter(Boolean);"
+    "if(!terms.length){out.hidden=true;list.hidden=false;return;}"
+    "if(!idx){if(!loading){loading=true;fetch('search-index.json').then(function(r){return r.json();})"
+    ".then(function(d){idx=d.map(function(e){return{e:e,t:fold(e[1]+' '+e[3])};});run();});}return;}"
+    "var hits=idx.filter(function(x){return terms.every(function(t){return x.t.indexOf(t)>=0;});});"
+    "out.textContent='';var head=document.createElement('p');head.className='meta';"
+    "head.textContent=hits.length+(hits.length===1?' result':' results')+(hits.length>100?' (first 100 shown)':'');"
+    "out.appendChild(head);var ul=document.createElement('ul');ul.className='search-results';"
+    "hits.slice(0,100).forEach(function(x){var li=document.createElement('li');"
+    "var d=document.createElement('a');d.href=x.e[0]+'.html';d.className='day';d.textContent=x.e[0];"
+    "var a=document.createElement('a');a.href=x.e[2];a.textContent=x.e[1];"
+    "li.appendChild(d);li.appendChild(document.createTextNode(' '));li.appendChild(a);"
+    "if(x.e[3]){var p=document.createElement('p');p.className='summary';p.textContent=x.e[3];li.appendChild(p);}"
+    "ul.appendChild(li);});out.appendChild(ul);out.hidden=false;list.hidden=true;}"
+    "var t;q.addEventListener('input',function(){clearTimeout(t);t=setTimeout(run,150);});})();"
 )

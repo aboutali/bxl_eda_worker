@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
+from bxl_eda_worker.events import Event
 from bxl_eda_worker.models import Item
 
 TABLE_SCHEMA = """
@@ -24,6 +25,15 @@ CREATE TABLE IF NOT EXISTS items (
   summary_oneliner TEXT NOT NULL DEFAULT '',
   swiss_rationale  TEXT NOT NULL DEFAULT '',
   importance       INTEGER NOT NULL DEFAULT 0
+);
+"""
+
+EVENTS_SCHEMA = """
+CREATE TABLE IF NOT EXISTS events (
+  event_date TEXT NOT NULL,
+  name       TEXT NOT NULL,
+  url        TEXT NOT NULL,
+  PRIMARY KEY (event_date, name)
 );
 """
 
@@ -48,6 +58,7 @@ def connect(db_path: Path) -> sqlite3.Connection:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.executescript(TABLE_SCHEMA)
+    conn.executescript(EVENTS_SCHEMA)
     _migrate(conn)
     conn.executescript(INDEX_SCHEMA)
     return conn
@@ -148,3 +159,29 @@ def _row_to_item(row: sqlite3.Row) -> Item:
         swiss_rationale=row["swiss_rationale"] or "",
         importance=row["importance"] or 0,
     )
+
+
+def upsert_events(conn: sqlite3.Connection, events: list[Event]) -> None:
+    conn.executemany(
+        "INSERT OR IGNORE INTO events (event_date, name, url) VALUES (?, ?, ?)",
+        [(e.when.isoformat(), e.name, e.url) for e in events],
+    )
+    conn.commit()
+
+
+def upcoming_events(conn: sqlite3.Connection, today: date, limit: int = 5) -> list[Event]:
+    cur = conn.execute(
+        "SELECT event_date, name, url FROM events WHERE event_date >= ? "
+        "ORDER BY event_date, name LIMIT ?",
+        (today.isoformat(), limit),
+    )
+    return [
+        Event(when=date.fromisoformat(r["event_date"]), name=r["name"], url=r["url"])
+        for r in cur.fetchall()
+    ]
+
+
+def prune_past_events(conn: sqlite3.Connection, today: date, keep_days: int = 30) -> None:
+    cutoff = today - timedelta(days=keep_days)
+    conn.execute("DELETE FROM events WHERE event_date < ?", (cutoff.isoformat(),))
+    conn.commit()

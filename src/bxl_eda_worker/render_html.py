@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import html
 import re
-from collections import defaultdict
-from datetime import date, datetime
+from collections import Counter, defaultdict
+from datetime import date, datetime, timezone
+from email.utils import format_datetime
+from xml.sax.saxutils import escape as xml_escape
 from pathlib import Path
 
 from bxl_eda_worker.classify import is_multilateral_forum_statement
@@ -20,6 +22,17 @@ from bxl_eda_worker.models import Item
 
 DOCS_DIR = REPO_ROOT / "docs"
 ARCHIVE_DIR = DOCS_DIR / "archive"
+SITE_URL = "https://aboutali.github.io/bxl_eda_worker/"
+FEED_DAYS = 30
+
+# Pages are rendered with links relative to docs/; archive copies live one
+# level down, so _rebase_for_archive rewrites exactly these strings.
+NAV_HTML = '<nav><a href="archive/">Archive →</a> · <a href="feed.xml">RSS</a></nav>'
+_ARCHIVE_REBASE = (
+    ('href="style.css"', 'href="../style.css"'),
+    ('href="feed.xml"', 'href="../feed.xml"'),
+    ('<a href="archive/">Archive →</a>', '<a href="../">← Latest</a> · <a href="./">Archive</a>'),
+)
 
 
 def render_html(
@@ -49,6 +62,7 @@ def render_html(
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">",
         f"<title>EU FP Digest — {date_str}</title>",
         "<link rel=\"stylesheet\" href=\"style.css\">",
+        "<link rel=\"alternate\" type=\"application/rss+xml\" title=\"EU FP Digest\" href=\"feed.xml\">",
         "</head>",
         "<body>",
         "<header>",
@@ -58,7 +72,7 @@ def render_html(
         + (f" <span class=\"collapsed\">({n_collapsed} cross-source duplicates collapsed)</span>" if n_collapsed else "")
         + f" · Sanctions {counts['sanctions']} · Middle East {counts['middle_east']} · "
         f"FP {counts['foreign_policy']} · Swiss-relevance {n_swiss}</div>",
-        "<nav><a href=\"archive/\">Archive →</a></nav>",
+        NAV_HTML,
         "</header>",
         "<main>",
     ]
@@ -68,6 +82,9 @@ def render_html(
         parts.append("<h2>Today</h2>")
         parts.append(f"<p class=\"lede\">{html.escape(headline)}</p>")
         parts.append("</section>")
+
+    if items:
+        parts.append(_render_filter_bar(items))
 
     by_cat: dict[str, list[Item]] = defaultdict(list)
     for it in items:
@@ -111,6 +128,8 @@ def render_html(
         f"sources polled: {polled}"
         f"<div class=\"made\">Made with &lt;3 for SER</div></footer>"
     )
+    if items:
+        parts.append(f"<script>{_FILTER_JS}</script>")
     parts.append("</body></html>")
     return "\n".join(parts)
 
@@ -157,8 +176,15 @@ def write_html_outputs(
     index_path = docs_dir / "index.html"
     archive_path = archive / f"{date.strftime('%Y-%m-%d')}.html"
     index_path.write_text(content, encoding="utf-8")
-    archive_path.write_text(content, encoding="utf-8")
+    archive_path.write_text(_rebase_for_archive(content), encoding="utf-8")
     return index_path, archive_path
+
+
+def _rebase_for_archive(content: str) -> str:
+    """Point docs/-relative links of a page one directory up (archive/)."""
+    for old, new in _ARCHIVE_REBASE:
+        content = content.replace(old, new)
+    return content
 
 
 def refresh_archive_index(
@@ -177,6 +203,7 @@ def refresh_archive_index(
     for f in archive.glob("*.html"):
         if f.name == "index.html":
             continue
+        _heal_archive_links(f)
         slug = f.stem
         n_items, n_swiss = extract(f)
         if m := daily_re.match(slug):
@@ -203,6 +230,58 @@ def refresh_archive_index(
     entries.sort(key=lambda e: e["sort_date"], reverse=True)
     out = archive / "index.html"
     out.write_text(render_archive_index(entries), encoding="utf-8")
+    write_feed(docs_dir)
+    return out
+
+
+def _heal_archive_links(path: Path) -> None:
+    """Older archive pages (and seed-archive weeks) carry docs/-relative links."""
+    text = path.read_text(encoding="utf-8")
+    if 'href="style.css"' in text:
+        path.write_text(_rebase_for_archive(text), encoding="utf-8")
+
+
+def write_feed(docs_dir: Path = DOCS_DIR, *, site_url: str = SITE_URL) -> Path:
+    """RSS 2.0 feed with one entry per daily digest (newest FEED_DAYS days)."""
+    daily = sorted(
+        (f for f in (docs_dir / "archive").glob("20??-??-??.html")),
+        key=lambda f: f.stem, reverse=True,
+    )[:FEED_DAYS]
+    entries: list[str] = []
+    for f in daily:
+        text = f.read_text(encoding="utf-8")
+        n_items, n_swiss = _peek_counts(f)
+        m_lede = re.search(r'<p class="lede">(.*?)</p>', text, re.S)
+        lede = html.unescape(m_lede.group(1)).strip() if m_lede else ""
+        m_end = re.search(r"→ (\d{4}-\d\d-\d\d \d\d:\d\d) UTC", text)
+        when = (
+            datetime.strptime(m_end.group(1), "%Y-%m-%d %H:%M")
+            if m_end else datetime.fromisoformat(f.stem)
+        ).replace(tzinfo=timezone.utc)
+        link = f"{site_url}archive/{f.stem}.html"
+        summary = lede or f"{n_items} items, {n_swiss} Swiss-relevant."
+        entries.append(
+            "<item>"
+            f"<title>EU FP Digest — {f.stem} ({n_items} items)</title>"
+            f"<link>{xml_escape(link)}</link>"
+            f'<guid isPermaLink="true">{xml_escape(link)}</guid>'
+            f"<pubDate>{format_datetime(when)}</pubDate>"
+            f"<description>{xml_escape(summary)}</description>"
+            "</item>"
+        )
+    feed = (
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<rss version="2.0"><channel>'
+        "<title>EU Foreign Policy &amp; Sanctions Digest</title>"
+        f"<link>{xml_escape(site_url)}</link>"
+        "<description>Daily digest of EU foreign-policy, Middle East and sanctions "
+        "developments, framed for a Swiss reader.</description>"
+        "<language>en</language>"
+        + "".join(entries)
+        + "</channel></rss>\n"
+    )
+    out = docs_dir / "feed.xml"
+    out.write_text(feed, encoding="utf-8")
     return out
 
 
@@ -276,8 +355,13 @@ def _render_item_html(it: Item, by_id: dict[str, Source]) -> str:
             f"<div class=\"also-covered\">also covered: {', '.join(peer_links)}</div>"
         )
 
+    data = (
+        f" data-topics=\"{html.escape(' '.join(it.topics), quote=True)}\""
+        f" data-regions=\"{html.escape('|'.join(_norm_regions(it)), quote=True)}\""
+        f" data-swiss=\"{'1' if it.swiss_relevance else '0'}\""
+    )
     return (
-        "<article>"
+        f"<article{data}>"
         f"<h4><a href=\"{url}\">{title}</a></h4>"
         f"<div class=\"src\">{html.escape(source_name)}{badge}{lang}{importance}"
         f" · <time datetime=\"{when.isoformat()}\">{_fmt(when)}</time></div>"
@@ -288,3 +372,62 @@ def _render_item_html(it: Item, by_id: dict[str, Source]) -> str:
 
 def _fmt(dt: datetime) -> str:
     return dt.strftime("%Y-%m-%d %H:%M")
+
+
+# Region labels come from the LLM ("saudi_arabia", "usa"); fold the variants.
+_REGION_ALIASES = {"usa": "united states", "us": "united states", "uk": "united kingdom"}
+MAX_REGION_FILTERS = 8
+
+
+def _norm_regions(it: Item) -> list[str]:
+    out: list[str] = []
+    for r in it.regions:
+        r = " ".join(r.replace("_", " ").lower().split())
+        r = _REGION_ALIASES.get(r, r)
+        if r and r not in out:
+            out.append(r)
+    return out
+
+
+def _render_filter_bar(items: list[Item]) -> str:
+    """Filter buttons for the topics/regions on this page. Hidden until JS runs."""
+    buttons = ['<button type="button" data-filter="all">All</button>']
+    for t in TOPIC_ORDER:
+        if any(t in it.topics for it in items):
+            buttons.append(
+                f'<button type="button" data-filter="topic:{t}">{html.escape(TOPIC_TAG_LABELS[t])}</button>'
+            )
+    if any(it.swiss_relevance for it in items):
+        buttons.append('<button type="button" data-filter="swiss">🇨🇭 Swiss</button>')
+    region_counts = Counter(r for it in items for r in _norm_regions(it))
+    for region, n in region_counts.most_common(MAX_REGION_FILTERS):
+        if n < 2:
+            break
+        buttons.append(
+            f'<button type="button" data-filter="region:{html.escape(region, quote=True)}">'
+            f"{html.escape(region.title())}</button>"
+        )
+    return (
+        '<div class="filters" role="group" aria-label="Filter items" hidden>'
+        + "".join(buttons)
+        + "</div>"
+    )
+
+
+# Progressive enhancement: without JS the bar stays hidden and every item shows.
+_FILTER_JS = (
+    "(function(){var bar=document.querySelector('.filters');if(!bar)return;bar.hidden=false;"
+    "var arts=[].slice.call(document.querySelectorAll('main article'));"
+    "var btns=[].slice.call(bar.querySelectorAll('button'));"
+    "function match(a,f){if(f==='all')return true;if(f==='swiss')return a.dataset.swiss==='1';"
+    "if(f.indexOf('topic:')===0)return a.dataset.topics.split(' ').indexOf(f.slice(6))>=0;"
+    "return a.dataset.regions.split('|').indexOf(f.slice(7))>=0;}"
+    "function apply(f){btns.forEach(function(b){b.setAttribute('aria-pressed',b.dataset.filter===f?'true':'false');});"
+    "arts.forEach(function(a){a.hidden=!match(a,f);});"
+    "[].forEach.call(document.querySelectorAll('main section.category'),function(s){"
+    "s.hidden=!s.querySelector('article:not([hidden])');});"
+    "try{localStorage.setItem('bxl-filter',f);}catch(e){}}"
+    "bar.addEventListener('click',function(e){var b=e.target.closest('button');if(b)apply(b.dataset.filter);});"
+    "var saved='all';try{saved=localStorage.getItem('bxl-filter')||'all';}catch(e){}"
+    "if(!btns.some(function(b){return b.dataset.filter===saved;}))saved='all';apply(saved);})();"
+)

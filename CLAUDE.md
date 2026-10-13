@@ -32,7 +32,7 @@ pytest tests/test_classify.py::test_name -v    # one test
 
 The worker writes to three locations (relative to repo root):
 - `digests/YYYY-MM-DD.md` — markdown digest (per-day file)
-- `docs/index.html`, `docs/archive/YYYY-MM-DD.html`, `docs/archive/index.html` — GitHub Pages site
+- `docs/index.html`, `docs/archive/YYYY-MM-DD.html`, `docs/archive/index.html`, `docs/feed.xml` — GitHub Pages site. Pages are rendered with `docs/`-relative links; `render_html._rebase_for_archive` rewrites them for the archive copy, and `refresh_archive_index` heals older archive pages and rewrites the RSS feed (one entry per daily page)
 - `data/items.sqlite` — dedup store (90-day retention)
 - `data/llm_cache.sqlite` — per-URL LLM enrichment cache
 

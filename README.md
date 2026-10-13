@@ -72,7 +72,7 @@ A GitHub Actions workflow at `.github/workflows/daily-digest.yml` is scheduled e
 1. **Make the repo public** (or upgrade to GitHub Pro — Pages on private repos requires a paid plan).
 2. **Enable Pages**: repo Settings → Pages → Source: *Deploy from a branch* → Branch: `main`, Folder: `/docs` → Save.
 3. **(Optional) Add the Anthropic key** for the daily synthesis headline + per-item enrichment: repo Settings → Secrets and variables → Actions → New repository secret → name `ANTHROPIC_API_KEY`, value `sk-ant-...`. The workflow already passes it through; without it the worker falls back to the keyword classifier and skips the headline.
-4. The site will be at `https://aboutali.github.io/bxl_eda_worker/`.
+4. The site will be at `https://aboutali.github.io/bxl_eda_worker/`. Readers can follow it by RSS at `https://aboutali.github.io/bxl_eda_worker/feed.xml`. The page offers topic, region and Swiss-relevance filters, a phone layout and a print stylesheet.
 
 The workflow uses `actions/cache` to persist `data/items.sqlite` across runs (so the daily digest is a true 24h delta) and to cache the Playwright Chromium download (~110 MB).
 

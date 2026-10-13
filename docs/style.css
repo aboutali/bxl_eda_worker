@@ -299,3 +299,72 @@ aside.simulated {
   color: var(--muted);
   font-style: italic;
 }
+
+[hidden] { display: none !important; }
+
+/* Topic / region / Swiss filter bar (shown only when JS runs). */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin: 0 0 1rem;
+}
+.filters button {
+  font: inherit;
+  font-size: .8rem;
+  padding: .3rem .75rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--fg);
+  cursor: pointer;
+}
+.filters button:hover { border-color: var(--accent); }
+.filters button[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+}
+
+/* Long URLs and region lists must not push the page sideways. */
+body { overflow-wrap: break-word; }
+.tags, .also-covered, .src { overflow-wrap: anywhere; }
+
+/* Phones. */
+@media (max-width: 600px) {
+  body { padding: 1rem 1rem 4rem; font-size: 15px; }
+  header { padding-bottom: 1rem; margin-bottom: 1rem; }
+  header h1 { font-size: 1.2rem; }
+  nav a { display: inline-block; padding: .65rem 0; }
+  h2 { font-size: 1.05rem; margin-top: 1.75rem; }
+  section.headline { margin: .75rem 0 1.5rem; padding: .85rem 1rem; }
+  section.headline .lede { font-size: 1rem; }
+  .filters button { min-height: 44px; padding: .4rem .9rem; }
+  article h4 { font-size: .98rem; }
+  .summary { padding-left: .6rem; }
+  ul.archive-list a { display: inline-block; padding: .5rem 0; }
+}
+
+/* Print / save as PDF. */
+@page { size: A4; margin: 15mm; }
+@media print {
+  :root {
+    --bg: #fff; --fg: #000; --muted: #444; --border: #ccc;
+    --accent: #000; --code-bg: #fff; --highlight-bg: #fff;
+  }
+  body { max-width: none; padding: 0; font-size: 10.5pt; }
+  nav, .filters, .made { display: none !important; }
+  [hidden] { display: block !important; }
+  .filters[hidden] { display: none !important; }
+  section.headline { border-left: 2px solid #000; padding: .5rem .75rem; }
+  h2 { break-after: avoid; }
+  article { break-inside: avoid; }
+  article a { border-bottom: none; color: #000; }
+  article h4 a::after {
+    content: " — " attr(href);
+    font-weight: 400;
+    font-size: 8pt;
+    color: #444;
+    overflow-wrap: anywhere;
+  }
+}

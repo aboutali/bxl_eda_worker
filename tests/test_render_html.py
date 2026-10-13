@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import feedparser
+
 from bxl_eda_worker.config import Source
 from bxl_eda_worker.models import Item
 from bxl_eda_worker.render_html import (
@@ -56,8 +58,13 @@ def test_html_writes_index_and_archive(tmp_path: Path):
                       window_start=when - timedelta(hours=24), window_end=when)
     index, archive = write_html_outputs(body, date=when, docs_dir=tmp_path)
     assert index.read_text(encoding="utf-8") == body
-    assert archive.read_text(encoding="utf-8") == body
     assert archive.name == "2026-04-27.html"
+    # The archive copy lives one level down: its relative links must go up.
+    archived = archive.read_text(encoding="utf-8")
+    assert 'href="../style.css"' in archived
+    assert 'href="../feed.xml"' in archived
+    assert '<a href="../">← Latest</a>' in archived
+    assert 'href="style.css"' not in archived
 
 
 def test_archive_index_lists_files(tmp_path: Path):
@@ -190,3 +197,58 @@ def test_html_footer_has_made_with_tagline():
     items = [_item("https://t/1", "s", "eu_institution", "X")]
     out = render_html(items, sources, **_win())
     assert "Made with &lt;3 for SER" in out  # < is escaped in HTML
+
+
+def test_refresh_heals_old_archive_links(tmp_path: Path):
+    archive_dir = tmp_path / "archive"
+    archive_dir.mkdir()
+    old = (archive_dir / "2026-04-27.html")
+    old.write_text(
+        '<link rel="stylesheet" href="style.css"><nav><a href="archive/">Archive →</a></nav>'
+        "3 items Swiss-relevance 1",
+        encoding="utf-8",
+    )
+    refresh_archive_index(docs_dir=tmp_path)
+    healed = old.read_text(encoding="utf-8")
+    assert 'href="../style.css"' in healed
+    assert '<a href="./">Archive</a>' in healed
+
+
+def test_feed_has_one_entry_per_daily_page(tmp_path: Path):
+    sources = [_src("s", "eu_institution")]
+    for day in (26, 27):
+        when = datetime(2026, 4, day, 4, 37, tzinfo=timezone.utc)
+        body = render_html(
+            [_item(f"https://t/{day}", "s", "eu_institution", "Council adopts sanctions")],
+            sources, window_start=when - timedelta(hours=24), window_end=when,
+            headline=f"Lede for day {day} & more.",
+        )
+        write_html_outputs(body, date=when, docs_dir=tmp_path)
+    (tmp_path / "archive" / "2026-W17.html").write_text("weekly", encoding="utf-8")
+    refresh_archive_index(docs_dir=tmp_path)
+
+    feed = feedparser.parse((tmp_path / "feed.xml").read_bytes())
+    assert [e.link for e in feed.entries] == [
+        "https://aboutali.github.io/bxl_eda_worker/archive/2026-04-27.html",
+        "https://aboutali.github.io/bxl_eda_worker/archive/2026-04-26.html",
+    ]
+    assert feed.entries[0].summary == "Lede for day 27 & more."
+    assert feed.entries[0].title == "EU FP Digest — 2026-04-27 (1 items)"
+    assert feed.entries[0].published_parsed[:5] == (2026, 4, 27, 4, 37)
+
+
+def test_items_carry_filter_data_and_bar():
+    sources = [_src("s", "eu_institution")]
+    a = _item("https://t/a", "s", "eu_institution", "Sanctions on Russia over Ukraine")
+    a.topics, a.regions, a.swiss_relevance = ["sanctions"], ["russia", "usa"], True
+    b = _item("https://t/b", "s", "eu_institution", "Sanctions package on Russia")
+    b.topics, b.regions = ["sanctions"], ["Russia", "united_states"]
+    when = datetime(2026, 4, 27, 12, 0, tzinfo=timezone.utc)
+    out = render_html([a, b], sources, window_start=when - timedelta(hours=24), window_end=when)
+    assert 'data-topics="sanctions" data-regions="russia|united states" data-swiss="1"' in out
+    assert '<div class="filters" role="group" aria-label="Filter items" hidden>' in out
+    assert 'data-filter="topic:sanctions"' in out
+    assert 'data-filter="swiss"' in out
+    assert 'data-filter="region:russia">Russia</button>' in out
+    assert 'data-filter="region:united states">United States</button>' in out
+    assert "<script>" in out

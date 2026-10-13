@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import feedparser
+import httpx
 
 from bxl_eda_worker.config import Source
 from bxl_eda_worker.fetchers import headless, html, rss
@@ -65,3 +66,34 @@ def test_rss_parses_rfc2822_dates():
     )
     entry = feedparser.parse(feed).entries[0]
     assert rss._parse_date(entry) == datetime(2026, 10, 5, 14, 50, tzinfo=timezone.utc)
+
+
+def _rss_source(**kwargs) -> Source:
+    return Source(id="ep_test", name="Test", type="rss", url="https://example.test/feed.xml", **kwargs)
+
+
+def test_rss_waf_202_logs_warning_and_returns_nothing(caplog):
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(202, headers={"x-amzn-waf-action": "challenge"})
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        items = rss.fetch_rss(_rss_source(), client=client)
+    assert items == []
+    assert "returned 202 (challenge)" in caplog.text
+
+
+def test_rss_sends_source_user_agent():
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["ua"] = request.headers["User-Agent"]
+        body = (
+            '<rss version="2.0"><channel><item><link>https://example.test/a</link>'
+            "<title>AFET vote on Syria</title></item></channel></rss>"
+        )
+        return httpx.Response(200, content=body.encode())
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        items = rss.fetch_rss(_rss_source(user_agent="Mozilla/5.0 test"), client=client)
+    assert seen["ua"] == "Mozilla/5.0 test"
+    assert [i.title for i in items] == ["AFET vote on Syria"]

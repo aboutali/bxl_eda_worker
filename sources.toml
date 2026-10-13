@@ -69,14 +69,18 @@ category = "eu_institution"
 weight = 2
 language = "en"
 
+# European Parliament feeds sit behind an AWS WAF that answers the bot UA with
+# HTTP 202 + empty body (x-amzn-waf-action: challenge); a browser UA gets the
+# feed. ep_news used /rss/doc/top-stories/, which stopped updating in Nov 2023.
 [[sources]]
 id = "ep_news"
-name = "European Parliament — News"
+name = "European Parliament — Press releases"
 type = "rss"
-url = "https://www.europarl.europa.eu/rss/doc/top-stories/en.xml"
+url = "https://www.europarl.europa.eu/rss/doc/press-releases/en.xml"
 category = "eu_institution"
 weight = 2
 language = "en"
+user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
 [[sources]]
 id = "ep_afet"
@@ -86,6 +90,7 @@ url = "https://www.europarl.europa.eu/rss/committee/afet/en.xml"
 category = "eu_institution"
 weight = 3
 language = "en"
+user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
 [[sources]]
 id = "ep_sede"
@@ -95,6 +100,7 @@ url = "https://www.europarl.europa.eu/rss/committee/sede/en.xml"
 category = "eu_institution"
 weight = 3
 language = "en"
+user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
 [[sources]]
 id = "ep_droi"
@@ -104,6 +110,7 @@ url = "https://www.europarl.europa.eu/rss/committee/droi/en.xml"
 category = "eu_institution"
 weight = 2
 language = "en"
+user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
 [[sources]]
 id = "ep_inta"
@@ -113,6 +120,7 @@ url = "https://www.europarl.europa.eu/rss/committee/inta/en.xml"
 category = "eu_institution"
 weight = 2
 language = "en"
+user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
 [[sources]]
 id = "ep_deve"
@@ -122,6 +130,7 @@ url = "https://www.europarl.europa.eu/rss/committee/deve/en.xml"
 category = "eu_institution"
 weight = 2
 language = "en"
+user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
 [[sources]]
 id = "ep_dpal"
@@ -131,6 +140,7 @@ url = "https://www.europarl.europa.eu/rss/delegation/dpal/en.xml"
 category = "eu_institution"
 weight = 3
 language = "en"
+user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
 [[sources]]
 id = "ep_dmas"
@@ -140,6 +150,7 @@ url = "https://www.europarl.europa.eu/rss/delegation/dmas/en.xml"
 category = "eu_institution"
 weight = 3
 language = "en"
+user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
 [[sources]]
 id = "ep_dmag"
@@ -149,6 +160,7 @@ url = "https://www.europarl.europa.eu/rss/delegation/dmag/en.xml"
 category = "eu_institution"
 weight = 2
 language = "en"
+user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
 [[sources]]
 id = "ep_dmed"
@@ -158,6 +170,7 @@ url = "https://www.europarl.europa.eu/rss/delegation/dmed/en.xml"
 category = "eu_institution"
 weight = 2
 language = "en"
+user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PRESS — Brussels-focused EU press
@@ -244,14 +257,17 @@ language = "fr"
 
 # Aargauer Zeitung — Ausland section (CH Media). Regional masthead but its
 # international desk carries the shared CH Media foreign-affairs wire.
-[[sources]]
-id = "aargauer_intl"
-name = "Aargauer Zeitung — International"
-type = "rss"
-url = "https://www.aargauerzeitung.ch/international.rss"
-category = "press_swiss"
-weight = 1
-language = "de"
+# DISABLED: Cloudflare JS challenge (cf-mitigated: challenge, HTTP 403) for
+# every UA, on the sister CH Media titles too (luzernerzeitung.ch,
+# tagblatt.ch). NZZ/Tagi/SRF/Le Temps cover the same ground.
+# [[sources]]
+# id = "aargauer_intl"
+# name = "Aargauer Zeitung — International"
+# type = "rss"
+# url = "https://www.aargauerzeitung.ch/international.rss"
+# category = "press_swiss"
+# weight = 1
+# language = "de"
 
 # swissinfo.ch (SWI) — DISABLED: the relaunched site dropped its news RSS. The
 # old /eng/services/rss now 410s, and the page <head> exposes no
@@ -300,15 +316,20 @@ language = "en"
 # THINK TANKS
 # ─────────────────────────────────────────────────────────────────────────────
 
-[[sources]]
-id = "ecfr"
-name = "ECFR — European Council on Foreign Relations"
-type = "rss"
-url = "https://ecfr.eu/feed/"
-category = "think_tank"
-weight = 1
-language = "en"
+# DISABLED: Cloudflare 403 for every UA and every WordPress feed path
+# (/feed/, /feed/rss2/, /?feed=rss2). Bruegel and Crisis Group cover
+# similar think-tank analysis.
+# [[sources]]
+# id = "ecfr"
+# name = "ECFR — European Council on Foreign Relations"
+# type = "rss"
+# url = "https://ecfr.eu/feed/"
+# category = "think_tank"
+# weight = 1
+# language = "en"
 
+# Bruegel 403s GitHub runners with the bot UA (served fine elsewhere), so it
+# gets a browser UA. Its only feed is /rss.xml.
 [[sources]]
 id = "bruegel"
 name = "Bruegel"
@@ -317,6 +338,7 @@ url = "https://www.bruegel.org/rss.xml"
 category = "think_tank"
 weight = 1
 language = "en"
+user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
 # International Crisis Group — field analysis on conflicts, sanctions and the
 # Middle East. High-signal for this digest's Middle East / FP beats.

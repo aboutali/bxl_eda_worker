@@ -15,6 +15,7 @@ from bxl_eda_worker.fetchers import (
     HeadlessUnavailable,
     browser_context,
     fetch_eeas_html,
+    fetch_ep_adopted_texts,
     fetch_headless_html,
     fetch_rss,
 )
@@ -51,10 +52,11 @@ def run(window_hours: int = 24, *, skip_headless: bool = False) -> None:
 
     rss_sources = [s for s in sources if s.type == "rss"]
     eeas_sources = [s for s in sources if s.type == "eeas_html"]
+    ep_sources = [s for s in sources if s.type == "ep_open_data"]
     headless_sources = [s for s in sources if s.type == "headless_html"]
     other = [
         s for s in sources
-        if s.type not in {"rss", "eeas_html", "headless_html"}
+        if s.type not in {"rss", "eeas_html", "ep_open_data", "headless_html"}
     ]
     for s in other:
         log.warning("source %s has unsupported type %r, skipping", s.id, s.type)
@@ -68,6 +70,10 @@ def run(window_hours: int = 24, *, skip_headless: bool = False) -> None:
         for src in eeas_sources:
             items = fetch_eeas_html(src, client=client)
             log.info("[html] %s: fetched %d items", src.id, len(items))
+            fresh.extend(items)
+        for src in ep_sources:
+            items = fetch_ep_adopted_texts(src, client=client)
+            log.info("[ep] %s: fetched %d items", src.id, len(items))
             fresh.extend(items)
 
     if headless_sources and not skip_headless:

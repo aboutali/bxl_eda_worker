@@ -16,6 +16,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from bxl_eda_worker.analyze import EFFORT, MODEL, fallback_kwargs
 from bxl_eda_worker.config import load_sources
 from bxl_eda_worker.models import Item, Topic
 from bxl_eda_worker.render_html import (
@@ -30,9 +31,8 @@ log = logging.getLogger(__name__)
 # Keep in sync with weekly.SIMULATED_MARKER (seed injects this banner below).
 SIMULATED_MARKER = '<aside class="simulated">'
 
-MODEL = os.getenv("BXL_LLM_MODEL", "claude-opus-4-8")
-WEEK_ITEMS_MAX_TOKENS = 8000
-WEEK_HEADLINE_MAX_TOKENS = 4096
+WEEK_ITEMS_MAX_TOKENS = 16000
+WEEK_HEADLINE_MAX_TOKENS = 16000
 
 SourceId = Literal[
     "eeas_press", "council_press", "commission_press",
@@ -197,7 +197,7 @@ def _generate_week_items(client, week_label, monday, sunday, sources) -> list[It
         f"Generate 13–17 plausible items for this week."
     )
     try:
-        resp = client.messages.parse(
+        resp = client.beta.messages.parse(
             model=MODEL,
             max_tokens=WEEK_ITEMS_MAX_TOKENS,
             system=[{
@@ -206,7 +206,9 @@ def _generate_week_items(client, week_label, monday, sunday, sources) -> list[It
                 "cache_control": {"type": "ephemeral"},
             }],
             messages=[{"role": "user", "content": user_text}],
+            output_config={"effort": EFFORT},
             output_format=WeekSeed,
+            **fallback_kwargs(),
         )
     except Exception as exc:
         log.warning("%s: items generation failed: %s", week_label, exc)
@@ -253,13 +255,14 @@ def _compose_week_headline(client, week_label, items: list[Item]) -> str:
         )
     )
     try:
-        resp = client.messages.create(
+        resp = client.beta.messages.create(
             model=MODEL,
             max_tokens=WEEK_HEADLINE_MAX_TOKENS,
             thinking={"type": "adaptive"},
-            output_config={"effort": "high"},
+            output_config={"effort": EFFORT},
             system=HEADLINE_SYSTEM,
             messages=[{"role": "user", "content": user_message}],
+            **fallback_kwargs(),
         )
     except Exception as exc:
         log.warning("%s: headline generation failed: %s", week_label, exc)

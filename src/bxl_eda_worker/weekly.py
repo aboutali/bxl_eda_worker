@@ -3,6 +3,11 @@
 The daily run calls `write_weekly` after the daily page. It writes
 docs/archive/YYYY-WNN.html for the last completed ISO week once, and replaces
 a simulated `seed-archive` page of the same week (marked by SIMULATED_MARKER).
+
+It also looks back REPAIR_WEEKS weeks for real pages written without a lede
+(the LLM was down, e.g. an empty credit balance) and rewrites each one once a
+lede can be composed. Those weeks' items were never enriched, so the weekly
+lede is written from their titles.
 """
 
 from __future__ import annotations
@@ -22,14 +27,19 @@ from bxl_eda_worker.storage import items_in_window
 log = logging.getLogger(__name__)
 
 SIMULATED_MARKER = '<aside class="simulated">'
+LEDE_MARKER = '<p class="lede">'
+# Weeks to look back for lede-less pages; items are kept for 90 days.
+REPAIR_WEEKS = 8
 
 
 def last_completed_week(today: date) -> tuple[str, date, date]:
     """(label, monday, sunday) of the ISO week before the one containing `today`."""
-    monday = today - timedelta(days=today.weekday() + 7)
-    sunday = monday + timedelta(days=6)
+    return _week(today - timedelta(days=today.weekday() + 7))
+
+
+def _week(monday: date) -> tuple[str, date, date]:
     iso = monday.isocalendar()
-    return f"{iso.year}-W{iso.week:02d}", monday, sunday
+    return f"{iso.year}-W{iso.week:02d}", monday, monday + timedelta(days=6)
 
 
 def is_simulated(path: Path) -> bool:
@@ -42,11 +52,36 @@ def write_weekly(
     today: date,
     *,
     docs_dir: Path = DOCS_DIR,
+) -> list[Path]:
+    """Write the last completed week, then repair recent lede-less weeks."""
+    _, last_monday, _ = last_completed_week(today)
+    written: list[Path] = []
+    for back in range(REPAIR_WEEKS):
+        label, monday, sunday = _week(last_monday - timedelta(weeks=back))
+        target = docs_dir / "archive" / f"{label}.html"
+        if not target.exists() or is_simulated(target):
+            if back > 0:
+                continue  # older missing/simulated weeks stay as they are
+            lede_required = False
+        elif LEDE_MARKER in target.read_text(encoding="utf-8"):
+            continue
+        else:
+            lede_required = True  # real page without lede: rewrite only with one
+        path = _write_week(conn, sources, label, monday, sunday, target, lede_required)
+        if path:
+            written.append(path)
+    return written
+
+
+def _write_week(
+    conn: sqlite3.Connection,
+    sources: list[Source],
+    label: str,
+    monday: date,
+    sunday: date,
+    target: Path,
+    lede_required: bool,
 ) -> Path | None:
-    label, monday, sunday = last_completed_week(today)
-    target = docs_dir / "archive" / f"{label}.html"
-    if target.exists() and not is_simulated(target):
-        return None
 
     start = datetime.combine(monday, time.min, tzinfo=timezone.utc)
     end = start + timedelta(days=7)
@@ -64,6 +99,9 @@ def write_weekly(
         primaries, weekly=True,
         period_label=f"the week {label} ({monday:%d %b} – {sunday:%d %b %Y})",
     )
+    if lede_required and not headline:
+        log.info("weekly %s: still no lede, keeping the existing page", label)
+        return None
     body = render_html(items, sources, window_start=start, window_end=end, headline=headline)
     body = body.replace(
         f"<title>EU FP Digest — {end:%Y-%m-%d}</title>",

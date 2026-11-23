@@ -74,15 +74,37 @@ def test_write_weekly_replaces_simulated_but_not_real(tmp_path: Path, monkeypatc
 
     out = weekly.write_weekly(conn, [_src()], date(2026, 10, 13), docs_dir=tmp_path)
     page = target.read_text(encoding="utf-8")
-    assert out == target
+    assert out == [target]
     assert "<title>EU FP Weekly — 2026-W41</title>" in page
     assert "<h2>This week</h2>" in page and "Week lede." in page
     assert "EU sanctions Russia listings" in page
     assert 'href="../style.css"' in page and "simulated" not in page
 
-    target.write_text("real page", encoding="utf-8")
-    assert weekly.write_weekly(conn, [_src()], date(2026, 10, 13), docs_dir=tmp_path) is None
-    assert target.read_text(encoding="utf-8") == "real page"
+    # A real page with a lede is final.
+    target.write_text('real page <p class="lede">Old lede.</p>', encoding="utf-8")
+    assert weekly.write_weekly(conn, [_src()], date(2026, 10, 13), docs_dir=tmp_path) == []
+    assert "Old lede." in target.read_text(encoding="utf-8")
+
+
+def test_write_weekly_repairs_ledeless_weeks_only_with_a_lede(tmp_path: Path, monkeypatch):
+    conn = connect(tmp_path / "db.sqlite")
+    upsert_items(conn, [_item("Council lists officials", published_at=datetime(2026, 10, 28, 9, tzinfo=timezone.utc))])
+    archive = tmp_path / "archive"
+    archive.mkdir()
+    w44 = archive / "2026-W44.html"  # three weeks before the last completed one
+    w44.write_text("real page written while the LLM was down", encoding="utf-8")
+    (archive / "2026-W41.html").write_text('real <p class="lede">x</p>', encoding="utf-8")
+    today = date(2026, 11, 23)  # last completed week: 2026-W47 (no items, no page)
+
+    monkeypatch.setattr(weekly, "compose_headline", lambda items, **kw: "")
+    assert weekly.write_weekly(conn, [_src()], today, docs_dir=tmp_path) == []
+    assert w44.read_text(encoding="utf-8").startswith("real page written")
+
+    monkeypatch.setattr(weekly, "compose_headline", lambda items, **kw: "Repaired lede.")
+    assert weekly.write_weekly(conn, [_src()], today, docs_dir=tmp_path) == [w44]
+    page = w44.read_text(encoding="utf-8")
+    assert "Repaired lede." in page and "Council lists officials" in page
+    assert not (archive / "2026-W43.html").exists()  # older missing weeks stay missing
 
 
 def test_search_index_lists_daily_items_only(tmp_path: Path):

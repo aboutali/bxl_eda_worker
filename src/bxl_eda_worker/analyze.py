@@ -19,13 +19,27 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-# Defaults to Opus 4.8 per skill guidance (most capable; user can override).
-MODEL = os.getenv("BXL_LLM_MODEL", "claude-opus-4-8")
+MODEL = os.getenv("BXL_LLM_MODEL", "claude-opus-5-5")
+# Opus 5.5 always thinks; effort is the only depth control (its default is
+# medium, set explicitly so a model switch can't change it silently).
+EFFORT = os.getenv("BXL_LLM_EFFORT", "medium")
 
-# Cap headline output; full thinking is allowed via adaptive thinking + max_tokens
-# headroom — Opus truncates output at high effort with low max_tokens.
-HEADLINE_MAX_TOKENS = 4096
-ITEM_MAX_TOKENS = 1024
+# Thinking tokens count against max_tokens, so both caps leave room for it:
+# a cut-off item response would fail structured-output parsing.
+HEADLINE_MAX_TOKENS = 16000
+ITEM_MAX_TOKENS = 8000
+
+# Server-side refusal fallback: if a safety classifier declines a request, the
+# API re-runs it on a fallback model chosen by refusal category, in the same
+# call. Sent only for models that accept the "default" form.
+FALLBACK_MODELS = (
+    "claude-opus-5-5", "claude-opus-5", "claude-fable-5-2", "claude-fable-5-1", "claude-sonnet-5-5",
+)
+FALLBACK_BETA = "server-side-fallback-2026-07-01"
+
+# Warn in the Actions run summary when at least this share of LLM calls fail
+# (e.g. an empty credit balance), instead of degrading silently.
+FAILURE_WARN_SHARE = 0.5
 
 SYSTEM_PROMPT_ITEM = """\
 You triage news items for a Swiss-confederation foreign-policy desk reader \
@@ -91,6 +105,7 @@ def enrich_items(items: list[Item]) -> list[Item]:
     cache_hits = 0
     cache_misses = 0
     failures = 0
+    last_error = ""
     for it in items:
         cached = llm_cache.get(it.url, MODEL)
         if cached is not None:
@@ -102,6 +117,7 @@ def enrich_items(items: list[Item]) -> list[Item]:
         except Exception as exc:
             log.warning("enrichment failed for %s: %s", it.url, exc)
             failures += 1
+            last_error = str(exc)
             continue
         llm_cache.put(it.url, MODEL, payload)
         _apply(it, payload)
@@ -110,6 +126,13 @@ def enrich_items(items: list[Item]) -> list[Item]:
         "enrichment: %d cached, %d new, %d failed (model=%s)",
         cache_hits, cache_misses, failures, MODEL,
     )
+    attempted = cache_misses + failures
+    if failures and failures >= FAILURE_WARN_SHARE * attempted:
+        ci_warning(
+            "LLM enrichment failing",
+            f"{failures} of {attempted} enrichment calls failed (model {MODEL}). "
+            f"Last error: {last_error}",
+        )
     return items
 
 
@@ -125,14 +148,18 @@ def compose_headline(
     client = _client()
     if client is None:
         return ""
-    # Sort by importance; cap to keep prompt size tractable.
+    enriched = any(it.summary_oneliner for it in items)
+    if not enriched and not weekly:
+        # Nothing useful to summarize — items weren't enriched.
+        return ""
+    # Sort by importance; cap to keep prompt size tractable. A weekly page over
+    # unenriched items (LLM down when they were fetched) has no importance to
+    # rank by, so it sends every title instead: titles are short.
+    cap = (40 if enriched else 250) if weekly else 25
     ranked = sorted(
         items,
         key=lambda it: (-(it.importance or 0), -(it.swiss_relevance)),
-    )[:40 if weekly else 25]
-    if not any(it.summary_oneliner for it in ranked):
-        # Nothing useful to summarize — items weren't enriched.
-        return ""
+    )[:cap]
 
     prompt_lines = [
         f"- [importance {it.importance or '?'}, "
@@ -144,16 +171,21 @@ def compose_headline(
     system = SYSTEM_PROMPT_HEADLINE_WEEKLY if weekly else SYSTEM_PROMPT_HEADLINE
 
     try:
-        resp = client.messages.create(
+        resp = client.beta.messages.create(
             model=MODEL,
             max_tokens=HEADLINE_MAX_TOKENS,
             thinking={"type": "adaptive"},
-            output_config={"effort": "high"},
+            output_config={"effort": EFFORT},
             system=system,
             messages=[{"role": "user", "content": user_message}],
+            **fallback_kwargs(),
         )
     except Exception as exc:
         log.warning("headline generation failed: %s", exc)
+        ci_warning("LLM headline failed", f"{'Weekly' if weekly else 'Daily'} headline (model {MODEL}): {exc}")
+        return ""
+    if resp.stop_reason == "refusal":
+        log.warning("headline refused (%s)", getattr(resp.stop_details, "category", None))
         return ""
 
     text_blocks = [b.text for b in resp.content if getattr(b, "type", None) == "text"]
@@ -169,6 +201,20 @@ def compose_headline(
 
 
 # ─── Internals ──────────────────────────────────────────────────────────────
+
+
+def fallback_kwargs() -> dict:
+    if MODEL not in FALLBACK_MODELS:
+        return {}
+    return {"betas": [FALLBACK_BETA], "fallbacks": "default"}
+
+
+def ci_warning(title: str, message: str) -> None:
+    """Log a warning and, inside GitHub Actions, raise a run annotation."""
+    log.warning("%s: %s", title, message)
+    if os.getenv("GITHUB_ACTIONS") == "true":
+        flat = " ".join(message.split())[:900]
+        print(f"::warning title={title}::{flat}", flush=True)
 
 
 def _client():
@@ -192,7 +238,7 @@ def _enrich_one(client: "Anthropic", item: Item) -> dict:
     )
     # Prompt caching on the system block — break-even at 2 calls; we make 30+.
     # cache_control goes on the system content block, not as a top-level kwarg.
-    resp = client.messages.parse(
+    resp = client.beta.messages.parse(
         model=MODEL,
         max_tokens=ITEM_MAX_TOKENS,
         system=[{
@@ -201,8 +247,12 @@ def _enrich_one(client: "Anthropic", item: Item) -> dict:
             "cache_control": {"type": "ephemeral"},
         }],
         messages=[{"role": "user", "content": user_text}],
+        output_config={"effort": EFFORT},
         output_format=ItemEnrichment,
+        **fallback_kwargs(),
     )
+    if resp.parsed_output is None:
+        raise ValueError(f"no structured output (stop_reason={resp.stop_reason})")
     return resp.parsed_output.model_dump()
 
 

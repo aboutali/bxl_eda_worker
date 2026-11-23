@@ -1,3 +1,4 @@
+from bxl_eda_worker.fetchers.ep_open_data import fetch_ep_adopted_texts
 from bxl_eda_worker.fetchers.headless import (
     HeadlessUnavailable,
     browser_context,
@@ -9,6 +10,7 @@ from bxl_eda_worker.fetchers.rss import fetch_rss
 __all__ = [
     "fetch_rss",
     "fetch_eeas_html",
+    "fetch_ep_adopted_texts",
     "fetch_headless_html",
     "browser_context",
     "HeadlessUnavailable",

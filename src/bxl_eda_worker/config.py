@@ -108,7 +108,7 @@ MULTILATERAL_FORUM_KEYWORDS = {
 class Source:
     id: str
     name: str
-    type: str  # "rss" | "eeas_html" | "headless_html"
+    type: str  # "rss" | "eeas_html" | "ep_open_data" | "headless_html"
     url: str
     category: str = "eu_institution"
     weight: int = 1

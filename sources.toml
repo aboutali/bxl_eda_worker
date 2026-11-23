@@ -69,108 +69,119 @@ category = "eu_institution"
 weight = 2
 language = "en"
 
-# European Parliament feeds sit behind an AWS WAF that answers the bot UA with
-# HTTP 202 + empty body (x-amzn-waf-action: challenge); a browser UA gets the
-# feed. ep_news used /rss/doc/top-stories/, which stopped updating in Nov 2023.
+# European Parliament: texts adopted in plenary, from the EP Open Data API
+# (fetchers/ep_open_data.py). The www.europarl.europa.eu RSS feeds below sit
+# behind an AWS WAF that answers GitHub runners with HTTP 202 + empty body
+# (x-amzn-waf-action: challenge) whatever the UA; data.europarl.europa.eu
+# has no WAF. The RSS feeds stay listed, DISABLED, for local runs.
 [[sources]]
-id = "ep_news"
-name = "European Parliament — Press releases"
-type = "rss"
-url = "https://www.europarl.europa.eu/rss/doc/press-releases/en.xml"
-category = "eu_institution"
-weight = 2
-language = "en"
-user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
-
-[[sources]]
-id = "ep_afet"
-name = "EP/AFET — Foreign Affairs Committee"
-type = "rss"
-url = "https://www.europarl.europa.eu/rss/committee/afet/en.xml"
+id = "ep_adopted"
+name = "European Parliament — Texts adopted"
+type = "ep_open_data"
+url = "https://data.europarl.europa.eu/api/v2/adopted-texts"
 category = "eu_institution"
 weight = 3
 language = "en"
-user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
-[[sources]]
-id = "ep_sede"
-name = "EP/SEDE — Security & Defence Subcommittee"
-type = "rss"
-url = "https://www.europarl.europa.eu/rss/committee/sede/en.xml"
-category = "eu_institution"
-weight = 3
-language = "en"
-user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+# [[sources]]
+# id = "ep_news"
+# name = "European Parliament — Press releases"
+# type = "rss"
+# url = "https://www.europarl.europa.eu/rss/doc/press-releases/en.xml"
+# category = "eu_institution"
+# weight = 2
+# language = "en"
+# user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
-[[sources]]
-id = "ep_droi"
-name = "EP/DROI — Human Rights Subcommittee"
-type = "rss"
-url = "https://www.europarl.europa.eu/rss/committee/droi/en.xml"
-category = "eu_institution"
-weight = 2
-language = "en"
-user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+# [[sources]]
+# id = "ep_afet"
+# name = "EP/AFET — Foreign Affairs Committee"
+# type = "rss"
+# url = "https://www.europarl.europa.eu/rss/committee/afet/en.xml"
+# category = "eu_institution"
+# weight = 3
+# language = "en"
+# user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
-[[sources]]
-id = "ep_inta"
-name = "EP/INTA — International Trade Committee"
-type = "rss"
-url = "https://www.europarl.europa.eu/rss/committee/inta/en.xml"
-category = "eu_institution"
-weight = 2
-language = "en"
-user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+# [[sources]]
+# id = "ep_sede"
+# name = "EP/SEDE — Security & Defence Subcommittee"
+# type = "rss"
+# url = "https://www.europarl.europa.eu/rss/committee/sede/en.xml"
+# category = "eu_institution"
+# weight = 3
+# language = "en"
+# user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
-[[sources]]
-id = "ep_deve"
-name = "EP/DEVE — Development Committee"
-type = "rss"
-url = "https://www.europarl.europa.eu/rss/committee/deve/en.xml"
-category = "eu_institution"
-weight = 2
-language = "en"
-user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+# [[sources]]
+# id = "ep_droi"
+# name = "EP/DROI — Human Rights Subcommittee"
+# type = "rss"
+# url = "https://www.europarl.europa.eu/rss/committee/droi/en.xml"
+# category = "eu_institution"
+# weight = 2
+# language = "en"
+# user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
-[[sources]]
-id = "ep_dpal"
-name = "EP/DPAL — Delegation for relations with Palestine"
-type = "rss"
-url = "https://www.europarl.europa.eu/rss/delegation/dpal/en.xml"
-category = "eu_institution"
-weight = 3
-language = "en"
-user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+# [[sources]]
+# id = "ep_inta"
+# name = "EP/INTA — International Trade Committee"
+# type = "rss"
+# url = "https://www.europarl.europa.eu/rss/committee/inta/en.xml"
+# category = "eu_institution"
+# weight = 2
+# language = "en"
+# user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
-[[sources]]
-id = "ep_dmas"
-name = "EP/DMAS — Delegation for relations with the Mashreq countries"
-type = "rss"
-url = "https://www.europarl.europa.eu/rss/delegation/dmas/en.xml"
-category = "eu_institution"
-weight = 3
-language = "en"
-user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+# [[sources]]
+# id = "ep_deve"
+# name = "EP/DEVE — Development Committee"
+# type = "rss"
+# url = "https://www.europarl.europa.eu/rss/committee/deve/en.xml"
+# category = "eu_institution"
+# weight = 2
+# language = "en"
+# user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
-[[sources]]
-id = "ep_dmag"
-name = "EP/DMAG — Delegation for relations with the Maghreb countries"
-type = "rss"
-url = "https://www.europarl.europa.eu/rss/delegation/dmag/en.xml"
-category = "eu_institution"
-weight = 2
-language = "en"
-user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+# [[sources]]
+# id = "ep_dpal"
+# name = "EP/DPAL — Delegation for relations with Palestine"
+# type = "rss"
+# url = "https://www.europarl.europa.eu/rss/delegation/dpal/en.xml"
+# category = "eu_institution"
+# weight = 3
+# language = "en"
+# user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
-[[sources]]
-id = "ep_dmed"
-name = "EP/DMED — Parliamentary Assembly of the Union for the Mediterranean"
-type = "rss"
-url = "https://www.europarl.europa.eu/rss/delegation/dmed/en.xml"
-category = "eu_institution"
-weight = 2
-language = "en"
-user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+# [[sources]]
+# id = "ep_dmas"
+# name = "EP/DMAS — Delegation for relations with the Mashreq countries"
+# type = "rss"
+# url = "https://www.europarl.europa.eu/rss/delegation/dmas/en.xml"
+# category = "eu_institution"
+# weight = 3
+# language = "en"
+# user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+
+# [[sources]]
+# id = "ep_dmag"
+# name = "EP/DMAG — Delegation for relations with the Maghreb countries"
+# type = "rss"
+# url = "https://www.europarl.europa.eu/rss/delegation/dmag/en.xml"
+# category = "eu_institution"
+# weight = 2
+# language = "en"
+# user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+
+# [[sources]]
+# id = "ep_dmed"
+# name = "EP/DMED — Parliamentary Assembly of the Union for the Mediterranean"
+# type = "rss"
+# url = "https://www.europarl.europa.eu/rss/delegation/dmed/en.xml"
+# category = "eu_institution"
+# weight = 2
+# language = "en"
+# user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PRESS — Brussels-focused EU press
@@ -328,17 +339,17 @@ language = "en"
 # weight = 1
 # language = "en"
 
-# Bruegel 403s GitHub runners with the bot UA (served fine elsewhere), so it
-# gets a browser UA. Its only feed is /rss.xml.
-[[sources]]
-id = "bruegel"
-name = "Bruegel"
-type = "rss"
-url = "https://www.bruegel.org/rss.xml"
-category = "think_tank"
-weight = 1
-language = "en"
-user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+# Bruegel: DISABLED. It answers GitHub runners with 403 for every UA (served
+# fine from other networks). Its only feed is /rss.xml.
+# [[sources]]
+# id = "bruegel"
+# name = "Bruegel"
+# type = "rss"
+# url = "https://www.bruegel.org/rss.xml"
+# category = "think_tank"
+# weight = 1
+# language = "en"
+# user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
 # International Crisis Group — field analysis on conflicts, sanctions and the
 # Middle East. High-signal for this digest's Middle East / FP beats.
